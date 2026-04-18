@@ -273,7 +273,6 @@ void SetOfNumbers::remove_position( const size_t index )
     }
     else
         throw std::runtime_error( "SetOfNumbers::remove_position(): index out of range." );
-    
 }
 
 // ********************************************************************************

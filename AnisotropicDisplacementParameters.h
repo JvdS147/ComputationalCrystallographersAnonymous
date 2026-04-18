@@ -37,7 +37,7 @@ class Vector3D;
 #include <vector>
 
 /*
-  Anisotropic Displacement Parameters
+  Anisotropic Displacement Parameters.
   
   Note that the use of beta and B is deprecated, please use U.
 */
@@ -49,10 +49,10 @@ public:
     AnisotropicDisplacementParameters();
 
     // Must be points (atomic coordinates) in Cartesian coordinates, not necessarily centred around the origin.
-    AnisotropicDisplacementParameters( const std::vector< Vector3D > & points );
+    explicit AnisotropicDisplacementParameters( const std::vector< Vector3D > & points );
 
     // Expects U_cart.
-    AnisotropicDisplacementParameters( const SymmetricMatrix3D & matrix );
+    explicit AnisotropicDisplacementParameters( const SymmetricMatrix3D & matrix );
 
     explicit AnisotropicDisplacementParameters( const double u_iso );
 

@@ -535,7 +535,7 @@ void read_cif( const FileName & file_name, CrystalStructure & crystal_structure 
             // Because we did not have the crystal lattice available while we read the aniso lines,
             // we stored Ucif there. Now we convert Ucif to Ucart.
             SymmetricMatrix3D U_cif = new_atom.anisotropic_displacement_parameters().U_cart();
-            new_atom.set_anisotropic_displacement_parameters( U_cif_2_U_cart( U_cif, crystal_lattice ) );
+            new_atom.set_anisotropic_displacement_parameters( AnisotropicDisplacementParameters( U_cif_2_U_cart( U_cif, crystal_lattice ) ) );
             crystal_structure.set_atom( i, new_atom );
         }
     }

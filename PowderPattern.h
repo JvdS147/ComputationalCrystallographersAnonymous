@@ -99,13 +99,15 @@ public:
 
     double cumulative_intensity( const Angle two_theta_start, const Angle two_theta_end ) const;
 
-    void read_xye( const FileName & file_name );
-    void read_xrdml( const FileName & file_name );
-    void read_raw( const FileName & file_name );
-    void read_mdi( const FileName & file_name );
     void read_brml( const FileName & file_name );
-    void read_txt( const FileName & file_name );
     void read_cif( const FileName & file_name );
+    void read_dat( const FileName & file_name );
+    void read_mdi( const FileName & file_name );
+    void read_raw( const FileName & file_name );
+    void read_txt( const FileName & file_name );
+    void read_xrdml( const FileName & file_name );
+    void read_xye( const FileName & file_name );
+
     void save_xye( const FileName & file_name, const bool include_wave_length ) const;
 
     // Writes to std::cout the code that is necessary to generate the PowderPattern object.
@@ -164,6 +166,9 @@ private:
     std::vector< double > intensities_;
     std::vector< double > estimated_standard_deviations_;
 };
+
+// ESD is std::max( sqrt( intensity ), intensity / 100.0 ), or 4.4 if intensity < 20.
+double calculate_estimated_standard_deviation( const double intensity );
 
 // Assumes uniform 2theta step size.
 bool same_range( const PowderPattern & lhs, const PowderPattern & rhs );

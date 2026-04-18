@@ -42,10 +42,10 @@ class OneSudokuSquare
 {
 public:
 
-    // Default constructor, initialises to 1 though 9
+    // Default constructor, initialises to 1 through 9.
     OneSudokuSquare();
 
-    // If the value is 0, initialises to 1 though 9
+    // If the value is 0, initialises to 1 through 9.
     explicit OneSudokuSquare( const size_t value );
 
     explicit OneSudokuSquare( const SetOfNumbers & values );
@@ -54,25 +54,21 @@ public:
     
     size_t value( const size_t i ) const;
     
-    // Returns its value when solved, throws otherwise
+    // Returns its value when solved, throws otherwise.
     size_t value() const;
     
-    // Returns true if something has changed
-    // The value is added to the other values, i.e. the bit for the value is set
+    // Returns true if something has changed.
+    // The value is added to the other values, i.e. the bit for the value is set.
     bool set( const size_t value );
 
-//    // Returns true if something has changed
-//    // The value is added to the other values, i.e. the bit for the value is set
+//    // Returns true if something has changed.
+//    // The value is added to the other values, i.e. the bit for the value is set.
 //    bool set( const OneSudokuSquare & sudoku_square );
-    // Returns true if something has changed
+
+    // Returns true if something has changed.
     bool unset( const size_t value );
-    
-    // The version with the OneSudokuSquare argument is less versatile (it does not allow for the vector to be empty)
-    // and the two can probably be merged and replaced by the SetOfNumbers version.
-    // Returns true if something has changed
-    bool unset( const OneSudokuSquare & sudoku_square );
-    
-    // Returns true if something has changed
+
+    // Returns true if something has changed.
     bool unset( const SetOfNumbers & values );
 
     bool contains( const size_t value ) const;
@@ -86,8 +82,8 @@ public:
     bool operator==( const OneSudokuSquare & rhs ) const { return ( this->values_ == rhs.values_ ); }
 
 private:
-    // Should probably store a SetOfNumbers
-    SetOfNumbers values_; // Always stored in ascending order
+
+    SetOfNumbers values_; // Always stored in ascending order.
 };
 
 // @@ Should have been a member function?

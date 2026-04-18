@@ -58,7 +58,7 @@ public:
     // Increments value by 1.
     int next_value() const;
 
-    // Returns current value + n, adjusted for cyclicity, leaves current value unchanged
+    // Returns current value + n, adjusted for cyclicity, leaves current value unchanged.
     int plus_n( const int n ) const;
 
     // Implicit conversion

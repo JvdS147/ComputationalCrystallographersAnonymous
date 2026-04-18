@@ -106,27 +106,20 @@ bool OneSudokuSquare::unset( const size_t value )
 
 // ********************************************************************************
 
-bool OneSudokuSquare::unset( const OneSudokuSquare & sudoku_square )
+bool OneSudokuSquare::unset( const SetOfNumbers & values )
 {
+    if ( values.empty() )
+        return false;
     SetOfNumbers new_values( SetOfNumbers::THROW );
     for ( size_t i( 0 ); i != values_.size(); ++i )
     {
-        if ( ! sudoku_square.contains( values_.value( i ) ) )
+        if ( ! values.contains( values_.value( i ) ) )
             new_values.add( values_.value( i ) );
     }
     new_values.set_empty_is_allowed( false );
     bool result = ( values_ != new_values );
     values_ = new_values;
     return result;
-}
-
-// ********************************************************************************
-
-bool OneSudokuSquare::unset( const SetOfNumbers & values )
-{
-    if ( values.empty() )
-        return false;
-    return this->unset( OneSudokuSquare( values ) );
 }
 
 // ********************************************************************************

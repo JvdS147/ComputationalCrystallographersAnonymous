@@ -28,7 +28,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
-//class OneSudokuSlice;
 class TransSquareDependency;
 
 #include "OneSudokuSquare.h"
@@ -45,7 +44,7 @@ class Sudoku
 {
 public:
 
-    // Default constructor
+    // Default constructor.
     Sudoku();
 
     Sudoku( const std::vector< std::string > & rows );
@@ -54,29 +53,29 @@ public:
 
     OneSudokuSlice slice( const size_t i ) const;
 
-    // 0 based
+    // 0 based.
     OneSudokuSlice row( const size_t i ) const;
 
-    // 0 based
+    // 0 based.
     OneSudokuSlice column( const size_t i ) const;
 
-    // 0 based
+    // 0 based.
     OneSudokuSlice block( const size_t i ) const;
 
     size_t nsquares() const { return values_.size(); }
 
     OneSudokuSquare square( const size_t index ) const { return values_[index]; }
 
-    // Could be called set_square(), I guess    
+    // Could be called set_square(), I guess.
     bool update_square( const size_t i, OneSudokuSquare square );
 
-    // Does not return solved slices
+    // Does not return solved slices.
     OneSudokuSlice next_slice();
 
-    // Consistency checking is performed
+    // Consistency checking is performed.
     void update_slice( const OneSudokuSlice & slice );
 
-    // i is the index of the square
+    // i is the index of the square.
     bool unset( const size_t i, const size_t value );
 
     size_t number_of_trans_square_dependencies() const { return 54; }
@@ -90,15 +89,13 @@ public:
 
     bool there_are_contradictions() const;
 
-    // Returns the three slices that contain this square
-    // index 0 is ROW, index 1 is COLUMN and index 2 is SQUARE
+    // Returns the three slices that contain this square.
+    // index 0 is ROW, index 1 is COLUMN and index 2 is SQUARE.
     static std::vector< size_t > square2slices( const size_t square_index );
 
     void show() const;
 
     void show_statistics() const;
-
-    static void initialise_trans_square_dependency_mappings();
 
 private:
 

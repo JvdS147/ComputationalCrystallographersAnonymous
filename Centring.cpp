@@ -56,14 +56,17 @@ Centring::Centring( const std::vector< Vector3D > & centring_vectors ):centring_
     if ( centring_vectors_.empty() )
         throw std::runtime_error( "Centring::Centring( std::vector< Vector3D > ): error: a centring must have at least one centring vector." );
     // Make the zero vector the first centring vector.
-    bool zero_vector_found( false );
-    for ( size_t i( 0 ); i != centring_vectors_.size(); ++i )
+    bool zero_vector_found = centring_vectors_[0].nearly_zero();
+    if ( ! zero_vector_found )
     {
-        if ( centring_vectors_[i].nearly_zero() )
+        for ( size_t i( 1 ); i != centring_vectors_.size(); ++i )
         {
-            zero_vector_found = true;
-            std::swap( centring_vectors_[0], centring_vectors_[i] );
-            break;
+            if ( centring_vectors_[i].nearly_zero() )
+            {
+                zero_vector_found = true;
+                std::swap( centring_vectors_[0], centring_vectors_[i] );
+                break;
+            }
         }
     }
     if ( ! zero_vector_found )

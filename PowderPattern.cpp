@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "PowderPattern.h"
+#include "BasicMathsFunctions.h"
 #include "FileName.h"
 #include "MathsFunctions.h"
 #include "RandomNumberGenerator.h"
@@ -85,12 +86,7 @@ void PowderPattern::push_back( const Angle two_theta, const double intensity )
 {
     two_theta_values_.push_back( two_theta );
     intensities_.push_back( intensity );
-    if ( intensity < 20.0 )
-        estimated_standard_deviations_.push_back(  4.4 );
-    else if ( intensity > 10000.0 )
-        estimated_standard_deviations_.push_back( intensity / 100.0 );
-    else
-        estimated_standard_deviations_.push_back( sqrt( intensity ) );
+    estimated_standard_deviations_.push_back( calculate_estimated_standard_deviation( intensity ) );
 }
 
 // ********************************************************************************
@@ -279,7 +275,6 @@ void PowderPattern::set_two_theta_start( const Angle two_theta_start )
         throw std::runtime_error( "PowderPattern::set_two_theta_start(): no data points." );
     if ( ( two_theta_values_[ 0 ] - 0.5*average_two_theta_step() ) > two_theta_start )
         throw std::runtime_error( "PowderPattern::set_two_theta_start(): adding data points not implemented yet." );
-        
 }
 
 // ********************************************************************************
@@ -291,7 +286,6 @@ void PowderPattern::set_two_theta_end( const Angle two_theta_end )
         throw std::runtime_error( "PowderPattern::set_two_theta_end(): no data points." );
     if ( ( two_theta_values_[ size()-1 ] + 0.5*average_two_theta_step() ) < two_theta_end )
         throw std::runtime_error( "PowderPattern::set_two_theta_end(): adding data points not implemented yet." );
-        
 }
 
 // ********************************************************************************
@@ -335,223 +329,6 @@ double PowderPattern::cumulative_intensity( const Angle two_theta_start, const A
 
 // ********************************************************************************
 
-void PowderPattern::read_xye( const FileName & file_name )
-{
-    *this = PowderPattern();
-    TextFileReader text_file_reader( file_name );
-    std::vector< std::string > words;
-    // The first line could contain the wavelength.
-    if ( text_file_reader.get_next_line( words ) )
-    {
-        if ( words.size() == 1 )
-            wavelength_ = Wavelength::determine_from_wavelength( string2double( words[0] ) );
-        else
-            text_file_reader.push_back_last_line();
-    }
-    else
-        return;
-    while ( text_file_reader.get_next_line( words ) )
-    {
-        if ( ( words.size() < 2 ) || ( words.size() > 3 ) )
-            throw std::runtime_error( "PowderPattern::read(): cannot interpret line \"" + text_file_reader.get_line() + "\"" );
-        two_theta_values_.push_back( Angle( string2double( words[0] ), Angle::DEGREES ) );
-        intensities_.push_back( string2double( words[1] ) );
-        if ( words.size() == 2 )
-            estimated_standard_deviations_.push_back( sqrt( intensities_[two_theta_values_.size()-1] ) );
-        else
-            estimated_standard_deviations_.push_back( string2double( words[2] ) );
-    }
-}
-
-// ********************************************************************************
-
-void PowderPattern::read_xrdml( const FileName & file_name )
-{
-    *this = PowderPattern();
-    TextFileReader_2 text_file_reader( file_name );
-    size_t iPos = text_file_reader.find( "<positions axis=\"2Theta\" unit=\"deg\">" );
-    if ( iPos == std::string::npos )
-        throw std::runtime_error( "PowderPattern::read_xrdml(): 2theta not found." );
-    std::string two_theta_start_str = extract_delimited_text( text_file_reader.line( iPos + 1 ), "<startPosition>", "</startPosition>");
-    std::string two_theta_end_str   = extract_delimited_text( text_file_reader.line( iPos + 2 ), "<endPosition>", "</endPosition>" );
-    Angle two_theta_start = Angle::from_degrees( string2double( two_theta_start_str ) );
-    Angle two_theta_end   = Angle::from_degrees( string2double( two_theta_end_str   ) );
-    std::vector< std::string > divergence_corrections;
-    iPos = text_file_reader.find( "<divergenceCorrections>" );
-    if ( iPos != std::string::npos )
-        divergence_corrections = split( extract_delimited_text( text_file_reader.line( iPos ), "<divergenceCorrections>", "</divergenceCorrections>" ) );
-    std::vector< std::string > counts;
-    iPos = text_file_reader.find( "<intensities unit=\"counts\">" );
-    if ( iPos != std::string::npos )
-        counts = split( extract_delimited_text( text_file_reader.line( iPos ), "<intensities unit=\"counts\">", "</intensities>" ) );
-    else
-    {
-        iPos = text_file_reader.find( "<counts unit=\"counts\">" );
-        if ( iPos != std::string::npos )
-            counts = split( extract_delimited_text( text_file_reader.line( iPos ), "<counts unit=\"counts\">", "</counts>" ) );
-        else
-            throw std::runtime_error( "PowderPattern::read_xrdml(): Counts not found." );
-    }
-    if ( counts.empty() )
-        throw std::runtime_error( "PowderPattern::read_xrdml(): no data points." );
-    if ( counts.size() == 1 )
-        throw std::runtime_error( "PowderPattern::read_xrdml(): only one data point." );
-    reserve( counts.size() );
-    Angle two_theta_step = ( two_theta_end - two_theta_start ) / ( counts.size() - 1 );
-    if ( divergence_corrections.empty() )
-    {
-        for ( size_t i( 0 ); i != counts.size(); ++i )
-            push_back( ( i * two_theta_step ) + two_theta_start, string2double( counts[i] ) );
-    }
-    else
-    {
-        if ( divergence_corrections.size() != counts.size() )
-            throw std::runtime_error( "PowderPattern::read_xrdml(): number of counts and number of divergence corrections differ." );
-        std::cout << "Note that the .xrdml file contains divergence corrections, which will be applied to the counts." << std::endl;
-        for ( size_t i( 0 ); i != counts.size(); ++i )
-            push_back( ( i * two_theta_step ) + two_theta_start, string2double( divergence_corrections[i] ) * string2double( counts[i] ) );
-    }
-}
-
-// ********************************************************************************
-
-//BANK       1    3501     350  CONST    23.20    2.30     0.0     0.0         STD
-//       1       3       1       0       3       2       4       2       2       2
-//       1       6       4       3       6       6       5       3       2       4
-//       7      11      10      28      35      69     119     160     272     342
-// The start is 0.232, the 2theta step size is 0.0230
-void PowderPattern::read_raw( const FileName & file_name )
-{
-    *this = PowderPattern();
-    // This is lab data (is that always true?), the wavelength is fine.
-    TextFileReader text_file_reader( file_name );
-    text_file_reader.set_skip_empty_lines( false );
-    std::vector< std::string > words;
-    if ( ! text_file_reader.get_next_line( words ) )
-        throw std::runtime_error( "PowderPattern::read_raw(): File is empty." );
-    if ( ! text_file_reader.get_next_line( words ) )
-        throw std::runtime_error( "PowderPattern::read_raw(): File is empty." );
-    if ( words.size() != 10 )
-        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 1." );
-    if ( words[0] != "BANK" )
-        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 2." );
-    if ( words[4] != "CONST" )
-        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 3." );
-    bool read_ESDs( false );
-    if ( words[9] == "ESD" )
-        read_ESDs = true;
-    else if ( words[9] != "STD" )
-        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 4." );
-    size_t ndata_points = string2integer( words[2] );
-    if ( ndata_points == 0 )
-        throw std::runtime_error( "PowderPattern::read_raw(): No data." );
-    Angle two_theta_start = Angle::from_degrees( string2double( words[5] ) / 100.0 );
-    Angle two_theta_step = Angle::from_degrees( string2double( words[6] ) / 100.0 );
-    size_t i( 0 );
-    std::string line;
-    Splitter splitter;
-    splitter.split_by_length( 8 );
-    while ( text_file_reader.get_next_line( line ) )
-    {
-        std::vector< std::string > temp_words = splitter.split( line );
-        words.clear();
-        bool one_word_was_empty( false );
-        for ( size_t j( 0 ); j != temp_words.size(); ++j )
-        {
-            temp_words[j] = strip( temp_words[j] );
-            if ( temp_words[j].empty() )
-                one_word_was_empty = true;
-            else
-            {
-                if ( one_word_was_empty )
-                    throw std::runtime_error( "PowderPattern::read_raw(): non-empty word after empty word." );
-                words.push_back( temp_words[j] );
-            }
-        }
-        if ( read_ESDs )
-        {
-            if ( is_odd( words.size() ) )
-                throw std::runtime_error( "PowderPattern::read_raw(): intensities plus ESDs stored, but number of values is odd." );
-            for ( size_t j( 0 ); j != words.size(); j += 2 )
-            {
-                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ), string2double( words[j+1] ) );
-                ++i;
-            }
-        }
-        else
-        {
-            for ( size_t j( 0 ); j != words.size(); ++j )
-            {
-                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ) );
-                ++i;
-            }
-        }
-    }
-    if ( i != ndata_points )
-        std::cout << "PowderPattern::read_raw(): Warning: the number of data points in the file disagrees with the number in the header." << std::endl;
-}
-
-// ********************************************************************************
-
-//08/06/2018 07:47:49  DIF       : t=   600s
-//  0.4460 0.0460  1.0 US 1.5418     87.5240  1893
-//      3      2      4      3      4      3      6      4
-//      3      2      6      9      8      6      7     15
-//      9     11     21     23     24     64    188    323
-// The start is 0.4460, the step is 0.0460 and the end is 87.5240-0.0460. There are 1893 points
-// The 2theta end value is wrong, because the last data point is a dummy data point with a value of -1, and it is *not* counted towards the number of data points,
-// but it *is* counted towards the end 2theta value.
-void PowderPattern::read_mdi( const FileName & file_name )
-{
-    *this = PowderPattern();
-    // This is lab data (is that always true?), the wavelength is fine.
-    TextFileReader text_file_reader( file_name );
-    text_file_reader.set_skip_empty_lines( false );
-    std::vector< std::string > words;
-    if ( ( ! text_file_reader.get_next_line( words ) ) || ( words.size() == 0 ) )
-        throw std::runtime_error( "PowderPattern::read_mdi(): First line is empty." );
-    if ( ! text_file_reader.get_next_line( words ) )
-        throw std::runtime_error( "PowderPattern::read_mdi(): File is empty." );
-    if ( words.size() != 7 )
-        throw std::runtime_error( "PowderPattern::read_mdi(): unexpected format." );
-    if ( words[3] != "US" )
-        throw std::runtime_error( "PowderPattern::read_mdi(): unexpected format." );
-    size_t ndata_points = string2integer( words[6] );
-    if ( ndata_points == 0 )
-        throw std::runtime_error( "PowderPattern::read_mdi(): No data." );
-    Angle two_theta_start = Angle::from_degrees( string2double( words[0] ) );
-    Angle two_theta_step = Angle::from_degrees( string2double( words[1] ) );
-    Angle two_theta_end = Angle::from_degrees( string2double( words[5] ) );
-    size_t i( 0 );
-    bool we_are_done( false );
-    while ( text_file_reader.get_next_line( words ) )
-    {
-        for ( size_t j( 0 ); j != words.size(); ++j )
-        {
-            // There is one dummy data point with value -1 after the last valid data point.
-            if ( ( i == ndata_points ) && ( words[j] == "-1" ) && ( j == ( words.size() - 1 ) ) )
-            {
-                we_are_done = true;
-            }
-            else
-            {
-                if ( we_are_done )
-                    throw std::runtime_error( "PowderPattern::read_mdi(): data found after last data point." );
-                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ) );
-                ++i;
-            }
-        }
-    }
-    if ( i != ndata_points )
-        std::cout << "PowderPattern::read_mdi(): Warning: the number of data points in the file (" + size_t2string( i ) + ") disagrees with the number in the header (" + size_t2string( ndata_points ) + ")." << std::endl;
-    else
-        std::cout << "PowderPattern::read_mdi(): the number of data points in the file (" + size_t2string( i ) + ") agrees with the number in the header (" + size_t2string( ndata_points ) + ")." << std::endl;
-    std::cout << "PowderPattern::read_mdi(): two_theta_end as calculated     = " << ( i * two_theta_step ) + two_theta_start << std::endl;
-    std::cout << "PowderPattern::read_mdi(): two_theta_end as read from file = " << two_theta_end << std::endl;
-}
-
-// ********************************************************************************
-
 //      <SubScans>
 //        <SubScanInfo Steps="1051" MeasuredSteps="1051" StartStepNo="0" MeasuredTimePerStep="260" PlannedTimePerStep="2" />
 //      </SubScans>
@@ -580,54 +357,6 @@ void PowderPattern::read_brml( const FileName & file_name )
 
 // ********************************************************************************
 
-void PowderPattern::read_txt( const FileName & file_name )
-{
-    *this = PowderPattern();
-    TextFileReader text_file_reader( file_name );
-    text_file_reader.set_skip_empty_lines( true );
-    std::vector< std::string > words;
-    size_t stage( 1 );
-    Angle two_theta_start;
-    Angle two_theta_step;
-    Angle two_theta_end;
-    size_t i( 0 );
-    while ( text_file_reader.get_next_line( words ) )
-    {
-        if ( words[0] == "DATE" ||
-             words[0] == "ACQTIME" ||
-             words[0] == "VOLTAGE" ||
-             words[0] == "CURRENT" ||
-             words[0] == "WAVELENGTH" ||
-             words[0] == "COMMENT1" ||
-             words[0] == "COMMENT2" ||
-             words[0] == "COMMENT3" )
-        {
-            if ( stage == 1 )
-                continue;
-            else
-                throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
-        }
-        if ( words.size() == 3 )
-        {
-            if ( stage != 1 )
-                throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
-            two_theta_start = Angle::from_degrees( string2double( words[0] ) );
-            two_theta_step  = Angle::from_degrees( string2double( words[1] ) );
-            two_theta_end   = Angle::from_degrees( string2double( words[2] ) );
-            stage = 3;
-            continue;
-        }
-        if ( stage != 3 )
-            throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
-        if ( words.size() != 1 )
-            throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
-        push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[0] ) );
-        ++i;
-    }
-}
-
-// ********************************************************************************
-
 // We have a couple of problems here:
 // The cif may be huge and full of other stuff that we do not need (it may even have multiple structures
 // with multiple powder diffraction patterns)
@@ -641,12 +370,12 @@ void PowderPattern::read_txt( const FileName & file_name )
 //   _pd_calc_intensity_total
 //   _pd_proc_intensity_bkg_calc
 //   _pd_proc_ls_weight
-//  878.115218   0            0           0         
-//  845.112609   0            0           0         
-//  830.491604   0            0           0         
-//  848.287054   0            0           0         
-//  874.178024   0            0           0         
-//  834.93539    0            0           0         
+//  878.115218   0            0           0
+//  845.112609   0            0           0
+//  830.491604   0            0           0
+//  848.287054   0            0           0
+//  874.178024   0            0           0
+//  834.93539    0            0           0
 //
 //
 //_pd_meas_2theta_range_min     5.0019
@@ -656,11 +385,11 @@ void PowderPattern::read_txt( const FileName & file_name )
 //
 //loop_
 //      _pd_meas_counts_total
-//32393   32393   32357   32330   32321   32406   32472   32505   32492   32484   #   5.0519   
-//32484   32519   32512   32454   32442   32433   32426   32386   32380   32410   #   5.0769   
-//32487   32525   32526   32508   32489   32469   32518   32530   32509   32492   #   5.1019   
-//32352   32361   32416   32393   32376   32386   32388   32390   32391   32392   #   5.0269   
-//32309   32331   32335   32310   32293   32289   32307   32350   32377   32370   #   5.0019   
+//32393   32393   32357   32330   32321   32406   32472   32505   32492   32484   #   5.0519
+//32484   32519   32512   32454   32442   32433   32426   32386   32380   32410   #   5.0769
+//32487   32525   32526   32508   32489   32469   32518   32530   32509   32492   #   5.1019
+//32352   32361   32416   32393   32376   32386   32388   32390   32391   32392   #   5.0269
+//32309   32331   32335   32310   32293   32289   32307   32350   32377   32370   #   5.0019
 void PowderPattern::read_cif( const FileName & file_name )
 {
     *this = PowderPattern();
@@ -763,6 +492,315 @@ void PowderPattern::read_cif( const FileName & file_name )
 
 // ********************************************************************************
 
+//11.0000   0.0200 111.0000
+//  46.84    40.68    44.25    45.15    43.20    42.69    45.76    44.00
+//  44.64    44.61    45.30    44.31    42.18    43.71    41.58    43.17
+//  ...
+void PowderPattern::read_dat( const FileName & file_name )
+{
+    *this = PowderPattern();
+    // This is lab data (is that always true?), the wavelength is fine.
+    TextFileReader text_file_reader( file_name );
+    text_file_reader.set_skip_empty_lines( false );
+    std::vector< std::string > words;
+    if ( ! text_file_reader.get_next_line( words ) )
+        throw std::runtime_error( "PowderPattern::read_dat(): First line is empty." );
+    if ( words.size() != 3 )
+        throw std::runtime_error( "PowderPattern::read_dat(): unexpected format." );
+    Angle two_theta_start = Angle::from_degrees( string2double( words[0] ) );
+    Angle two_theta_step = Angle::from_degrees( string2double( words[1] ) );
+    Angle two_theta_end = Angle::from_degrees( string2double( words[2] ) );
+    if ( two_theta_step < Angle::from_degrees( 0.0001 ) )
+        throw std::runtime_error( "PowderPattern::read_dat(): 2theta step < 0.0001." );
+    if ( two_theta_end < two_theta_start )
+        throw std::runtime_error( "PowderPattern::read_dat(): 2theta end < 2theta start." );
+    size_t npoints = round_to_int( ( ( two_theta_end - two_theta_start ) / two_theta_step ) ) + 1;
+    if ( npoints < 2 )
+        throw std::runtime_error( "PowderPattern::read_dat(): No data." );
+    size_t i( 0 );
+    while ( text_file_reader.get_next_line( words ) )
+    {
+        for ( size_t j( 0 ); j != words.size(); ++j )
+        {
+            push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ) );
+            ++i;
+        }
+    }
+    if ( i != npoints )
+        std::cout << "PowderPattern::read_dat(): Warning: the number of data points in the file (" + size_t2string( i ) + ") disagrees with the number in the header (" + size_t2string( npoints ) + ")." << std::endl;
+    else
+        std::cout << "PowderPattern::read_dat(): the number of data points in the file (" + size_t2string( i ) + ") agrees with the number in the header (" + size_t2string( npoints ) + ")." << std::endl;
+    std::cout << "PowderPattern::read_dat(): two_theta_end as calculated     = " << ( i * two_theta_step ) + two_theta_start << std::endl;
+    std::cout << "PowderPattern::read_dat(): two_theta_end as read from file = " << two_theta_end << std::endl;
+}
+
+// ********************************************************************************
+
+//08/06/2018 07:47:49  DIF       : t=   600s
+//  0.4460 0.0460  1.0 US 1.5418     87.5240  1893
+//      3      2      4      3      4      3      6      4
+//      3      2      6      9      8      6      7     15
+//      9     11     21     23     24     64    188    323
+// The start is 0.4460, the step is 0.0460 and the end is 87.5240-0.0460. There are 1893 points
+// The 2theta end value is wrong, because the last data point is a dummy data point with a value of -1, and it is *not* counted towards the number of data points,
+// but it *is* counted towards the end 2theta value.
+void PowderPattern::read_mdi( const FileName & file_name )
+{
+    *this = PowderPattern();
+    // This is lab data (is that always true?), the wavelength is fine.
+    TextFileReader text_file_reader( file_name );
+    text_file_reader.set_skip_empty_lines( false );
+    std::vector< std::string > words;
+    if ( ( ! text_file_reader.get_next_line( words ) ) || ( words.size() == 0 ) )
+        throw std::runtime_error( "PowderPattern::read_mdi(): First line is empty." );
+    if ( ! text_file_reader.get_next_line( words ) )
+        throw std::runtime_error( "PowderPattern::read_mdi(): File is empty." );
+    if ( words.size() != 7 )
+        throw std::runtime_error( "PowderPattern::read_mdi(): unexpected format." );
+    if ( words[3] != "US" )
+        throw std::runtime_error( "PowderPattern::read_mdi(): unexpected format." );
+    size_t ndata_points = string2integer( words[6] );
+    if ( ndata_points == 0 )
+        throw std::runtime_error( "PowderPattern::read_mdi(): No data." );
+    Angle two_theta_start = Angle::from_degrees( string2double( words[0] ) );
+    Angle two_theta_step = Angle::from_degrees( string2double( words[1] ) );
+    Angle two_theta_end = Angle::from_degrees( string2double( words[5] ) );
+    size_t i( 0 );
+    bool we_are_done( false );
+    while ( text_file_reader.get_next_line( words ) )
+    {
+        for ( size_t j( 0 ); j != words.size(); ++j )
+        {
+            // There is one dummy data point with value -1 after the last valid data point.
+            if ( ( i == ndata_points ) && ( words[j] == "-1" ) && ( j == ( words.size() - 1 ) ) )
+            {
+                we_are_done = true;
+            }
+            else
+            {
+                if ( we_are_done )
+                    throw std::runtime_error( "PowderPattern::read_mdi(): data found after last data point." );
+                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ) );
+                ++i;
+            }
+        }
+    }
+    if ( i != ndata_points )
+        std::cout << "PowderPattern::read_mdi(): Warning: the number of data points in the file (" + size_t2string( i ) + ") disagrees with the number in the header (" + size_t2string( ndata_points ) + ")." << std::endl;
+    else
+        std::cout << "PowderPattern::read_mdi(): the number of data points in the file (" + size_t2string( i ) + ") agrees with the number in the header (" + size_t2string( ndata_points ) + ")." << std::endl;
+    std::cout << "PowderPattern::read_mdi(): two_theta_end as calculated     = " << ( i * two_theta_step ) + two_theta_start << std::endl;
+    std::cout << "PowderPattern::read_mdi(): two_theta_end as read from file = " << two_theta_end << std::endl;
+}
+
+// ********************************************************************************
+
+//BANK       1    3501     350  CONST    23.20    2.30     0.0     0.0         STD
+//       1       3       1       0       3       2       4       2       2       2
+//       1       6       4       3       6       6       5       3       2       4
+//       7      11      10      28      35      69     119     160     272     342
+// The start is 0.232, the 2theta step size is 0.0230
+void PowderPattern::read_raw( const FileName & file_name )
+{
+    *this = PowderPattern();
+    // This is lab data (is that always true?), the wavelength is fine.
+    TextFileReader text_file_reader( file_name );
+    text_file_reader.set_skip_empty_lines( false );
+    std::vector< std::string > words;
+    if ( ! text_file_reader.get_next_line( words ) )
+        throw std::runtime_error( "PowderPattern::read_raw(): File is empty." );
+    if ( ! text_file_reader.get_next_line( words ) )
+        throw std::runtime_error( "PowderPattern::read_raw(): File is empty." );
+    if ( words.size() != 10 )
+        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 1." );
+    if ( words[0] != "BANK" )
+        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 2." );
+    if ( words[4] != "CONST" )
+        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 3." );
+    bool read_ESDs( false );
+    if ( words[9] == "ESD" )
+        read_ESDs = true;
+    else if ( words[9] != "STD" )
+        throw std::runtime_error( "PowderPattern::read_raw(): unexpected format 4." );
+    size_t ndata_points = string2integer( words[2] );
+    if ( ndata_points == 0 )
+        throw std::runtime_error( "PowderPattern::read_raw(): No data." );
+    Angle two_theta_start = Angle::from_degrees( string2double( words[5] ) / 100.0 );
+    Angle two_theta_step = Angle::from_degrees( string2double( words[6] ) / 100.0 );
+    size_t i( 0 );
+    std::string line;
+    Splitter splitter;
+    splitter.split_by_length( 8 );
+    while ( text_file_reader.get_next_line( line ) )
+    {
+        std::vector< std::string > temp_words = splitter.split( line );
+        words.clear();
+        bool one_word_was_empty( false );
+        for ( size_t j( 0 ); j != temp_words.size(); ++j )
+        {
+            temp_words[j] = strip( temp_words[j] );
+            if ( temp_words[j].empty() )
+                one_word_was_empty = true;
+            else
+            {
+                if ( one_word_was_empty )
+                    throw std::runtime_error( "PowderPattern::read_raw(): non-empty word after empty word." );
+                words.push_back( temp_words[j] );
+            }
+        }
+        if ( read_ESDs )
+        {
+            if ( is_odd( words.size() ) )
+                throw std::runtime_error( "PowderPattern::read_raw(): intensities plus ESDs stored, but number of values is odd." );
+            for ( size_t j( 0 ); j != words.size(); j += 2 )
+            {
+                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ), string2double( words[j+1] ) );
+                ++i;
+            }
+        }
+        else
+        {
+            for ( size_t j( 0 ); j != words.size(); ++j )
+            {
+                push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[j] ) );
+                ++i;
+            }
+        }
+    }
+    if ( i != ndata_points )
+        std::cout << "PowderPattern::read_raw(): Warning: the number of data points in the file disagrees with the number in the header." << std::endl;
+}
+
+// ********************************************************************************
+
+void PowderPattern::read_txt( const FileName & file_name )
+{
+    *this = PowderPattern();
+    TextFileReader text_file_reader( file_name );
+    text_file_reader.set_skip_empty_lines( true );
+    std::vector< std::string > words;
+    size_t stage( 1 );
+    Angle two_theta_start;
+    Angle two_theta_step;
+    Angle two_theta_end;
+    size_t i( 0 );
+    while ( text_file_reader.get_next_line( words ) )
+    {
+        if ( words[0] == "DATE" ||
+             words[0] == "ACQTIME" ||
+             words[0] == "VOLTAGE" ||
+             words[0] == "CURRENT" ||
+             words[0] == "WAVELENGTH" ||
+             words[0] == "COMMENT1" ||
+             words[0] == "COMMENT2" ||
+             words[0] == "COMMENT3" )
+        {
+            if ( stage == 1 )
+                continue;
+            else
+                throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
+        }
+        if ( words.size() == 3 )
+        {
+            if ( stage != 1 )
+                throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
+            two_theta_start = Angle::from_degrees( string2double( words[0] ) );
+            two_theta_step  = Angle::from_degrees( string2double( words[1] ) );
+            two_theta_end   = Angle::from_degrees( string2double( words[2] ) );
+            stage = 3;
+            continue;
+        }
+        if ( stage != 3 )
+            throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
+        if ( words.size() != 1 )
+            throw std::runtime_error( "PowderPattern::read_txt(): keyword out of place." );
+        push_back( ( i * two_theta_step ) + two_theta_start, string2double( words[0] ) );
+        ++i;
+    }
+}
+
+// ********************************************************************************
+
+void PowderPattern::read_xrdml( const FileName & file_name )
+{
+    *this = PowderPattern();
+    TextFileReader_2 text_file_reader( file_name );
+    size_t iPos = text_file_reader.find( "<positions axis=\"2Theta\" unit=\"deg\">" );
+    if ( iPos == std::string::npos )
+        throw std::runtime_error( "PowderPattern::read_xrdml(): 2theta not found." );
+    std::string two_theta_start_str = extract_delimited_text( text_file_reader.line( iPos + 1 ), "<startPosition>", "</startPosition>");
+    std::string two_theta_end_str   = extract_delimited_text( text_file_reader.line( iPos + 2 ), "<endPosition>", "</endPosition>" );
+    Angle two_theta_start = Angle::from_degrees( string2double( two_theta_start_str ) );
+    Angle two_theta_end   = Angle::from_degrees( string2double( two_theta_end_str   ) );
+    std::vector< std::string > divergence_corrections;
+    iPos = text_file_reader.find( "<divergenceCorrections>" );
+    if ( iPos != std::string::npos )
+        divergence_corrections = split( extract_delimited_text( text_file_reader.line( iPos ), "<divergenceCorrections>", "</divergenceCorrections>" ) );
+    std::vector< std::string > counts;
+    iPos = text_file_reader.find( "<intensities unit=\"counts\">" );
+    if ( iPos != std::string::npos )
+        counts = split( extract_delimited_text( text_file_reader.line( iPos ), "<intensities unit=\"counts\">", "</intensities>" ) );
+    else
+    {
+        iPos = text_file_reader.find( "<counts unit=\"counts\">" );
+        if ( iPos != std::string::npos )
+            counts = split( extract_delimited_text( text_file_reader.line( iPos ), "<counts unit=\"counts\">", "</counts>" ) );
+        else
+            throw std::runtime_error( "PowderPattern::read_xrdml(): Counts not found." );
+    }
+    if ( counts.empty() )
+        throw std::runtime_error( "PowderPattern::read_xrdml(): no data points." );
+    if ( counts.size() == 1 )
+        throw std::runtime_error( "PowderPattern::read_xrdml(): only one data point." );
+    reserve( counts.size() );
+    Angle two_theta_step = ( two_theta_end - two_theta_start ) / ( counts.size() - 1 );
+    if ( divergence_corrections.empty() )
+    {
+        for ( size_t i( 0 ); i != counts.size(); ++i )
+            push_back( ( i * two_theta_step ) + two_theta_start, string2double( counts[i] ) );
+    }
+    else
+    {
+        if ( divergence_corrections.size() != counts.size() )
+            throw std::runtime_error( "PowderPattern::read_xrdml(): number of counts and number of divergence corrections differ." );
+        std::cout << "Note that the .xrdml file contains divergence corrections, which will be applied to the counts." << std::endl;
+        for ( size_t i( 0 ); i != counts.size(); ++i )
+            push_back( ( i * two_theta_step ) + two_theta_start, string2double( divergence_corrections[i] ) * string2double( counts[i] ) );
+    }
+}
+
+// ********************************************************************************
+
+void PowderPattern::read_xye( const FileName & file_name )
+{
+    *this = PowderPattern();
+    TextFileReader text_file_reader( file_name );
+    std::vector< std::string > words;
+    // The first line could contain the wavelength.
+    if ( text_file_reader.get_next_line( words ) )
+    {
+        if ( words.size() == 1 )
+            wavelength_ = Wavelength::determine_from_wavelength( string2double( words[0] ) );
+        else
+            text_file_reader.push_back_last_line();
+    }
+    else
+        return;
+    while ( text_file_reader.get_next_line( words ) )
+    {
+        if ( ( words.size() < 2 ) || ( words.size() > 3 ) )
+            throw std::runtime_error( "PowderPattern::read(): cannot interpret line \"" + text_file_reader.get_line() + "\"" );
+        two_theta_values_.push_back( Angle( string2double( words[0] ), Angle::DEGREES ) );
+        intensities_.push_back( string2double( words[1] ) );
+        if ( words.size() == 2 )
+            estimated_standard_deviations_.push_back( sqrt( intensities_[two_theta_values_.size()-1] ) );
+        else
+            estimated_standard_deviations_.push_back( string2double( words[2] ) );
+    }
+}
+
+// ********************************************************************************
+
 void PowderPattern::save_xye( const FileName & file_name, const bool include_wave_length ) const
 {
     TextFileWriter text_file_writer( file_name );
@@ -853,14 +891,7 @@ void PowderPattern::correct_zero_point_error( const Angle two_theta_value )
 void PowderPattern::recalculate_estimated_standard_deviations()
 {
     for ( size_t i( 0 ); i != size(); ++i )
-    {
-        if ( intensities_[i] < 20.0 )
-            estimated_standard_deviations_[i] = 4.4;
-        else if ( intensities_[i] > 10000.0 )
-            estimated_standard_deviations_[i] = intensities_[i] / 100.0;
-        else
-            estimated_standard_deviations_[i] = sqrt( intensities_[i] );
-    }
+        estimated_standard_deviations_[i] = calculate_estimated_standard_deviation( intensities_[i] );
 }
 
 // ********************************************************************************
@@ -983,6 +1014,18 @@ void PowderPattern::average_if_two_theta_equal()
     two_theta_values_ = new_two_theta_values;
     intensities_ = new_intensities;
     estimated_standard_deviations_ = new_estimated_standard_deviations;
+}
+
+// ********************************************************************************
+
+// ESD is std::max( sqrt( intensity ), intensity / 100.0 ), or 4.4 if intensity < 20.
+double calculate_estimated_standard_deviation( const double intensity )
+{
+    if ( intensity < 20.0 )
+        return 4.4;
+    if ( intensity > 10000.0 )
+        return intensity / 100.0;
+    return sqrt( intensity );
 }
 
 // ********************************************************************************

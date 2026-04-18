@@ -60,7 +60,7 @@ public:
 
     size_t determining_values_size() const { return 6; }
     size_t values_to_be_changed_size() const { return 6; }
-    
+
    // bool solved() const;
 
     void show() const;

@@ -68,7 +68,7 @@ static const size_t sudoku_slice_mapping[27][9] =
                        { 60, 61, 62, 69, 70, 71, 78, 79, 80 }
                    };
 
-static size_t sudoku_determining_values_mapping[54][6] =
+static const size_t sudoku_determining_values_mapping[54][6] =
                    {
                        {   9, 10, 11, 18, 19, 20 },
                        {  12, 13, 14, 21, 22, 23 },
@@ -126,7 +126,7 @@ static size_t sudoku_determining_values_mapping[54][6] =
                        {  60, 61, 69, 70, 78, 79 }
                    };
 
-static size_t sudoku_values_to_be_changed_mapping[54][6] =
+static const size_t sudoku_values_to_be_changed_mapping[54][6] =
                    {
                        {   3,  4,  5,  6,  7,  8 },
                        {   0,  1,  2,  6,  7,  8 },
@@ -199,19 +199,19 @@ Sudoku::Sudoku()
 
 Sudoku::Sudoku( const std::vector< std::string > & rows )
 {
+    if ( rows.size() != 9 )
+        throw std::runtime_error( "Sudoku::Sudoku( std::vector< std::string > ): incorrect number of rows." );
     current_slice_ = CyclicInteger( 0, number_of_slices()-1, number_of_slices()-1 );
     current_trans_square_dependency_ = CyclicInteger( 0, 53, 53 );
     values_.reserve( 81 );
     for ( size_t i( 0 ); i != 81; ++i )
         values_.push_back( OneSudokuSquare() );
-    if ( rows.size() != 9 )
-        throw std::runtime_error( "Sudoku::Sudoku( std::vector< std::string > ): incorrect number of rows." );
     size_t index( 0 );
     for ( size_t i( 0 ); i != rows.size(); ++i )
     {
         if ( rows[i].size() != 9 )
             throw std::runtime_error( "Sudoku::Sudoku( std::vector< std::string > ): incorrect number of squares." );
-        for ( size_t j( 0 ); j != rows.size(); ++j )
+        for ( size_t j( 0 ); j != rows[i].size(); ++j )
         {
             int value = string2integer( rows[i].substr( j, 1 ) );
             if ( value != 0 )
@@ -265,7 +265,7 @@ OneSudokuSlice Sudoku::next_slice()
     OneSudokuSlice result = slice( current_slice_.current_value() );
     // This can go wrong, partially because sudoku.solved() returns false
     // when the sudoku has been solved but contains a contradiction,
-    // but this is not true for a slice. So sudoku.solved() may return false when all slices return true
+    // but this is not true for a slice. So sudoku.solved() may return false when all slices return true.
     // We may call this while the sudoku has been solved (due to the recursion in update_square()), in which case
     // we would end up with an infinite loop.
     size_t infinite_loop_guard( 0 );
@@ -295,15 +295,15 @@ void Sudoku::update_slice( const OneSudokuSlice & slice )
 bool Sudoku::update_square( const size_t i, OneSudokuSquare square )
 {
     // Due to the recursion, it is possible that a square that we were in the middle of dealing with
-    // now becomes active again, but has meanwhile been solved
+    // now becomes active again, but has meanwhile been solved.
     if ( values_[i].solved() )
         return false;
-    if ( values_[i] == square )
-        return false;
+    // Check that we do not add values that before were impossible.
     SetOfNumbers new_values = square.values();
-    // Check that we do not add values that before were impossible
     new_values = new_values.in_common( values_[i].values() );
     square = OneSudokuSquare( new_values );
+    if ( values_[i] == square )
+        return false;
     values_[i] = square;
     if ( square.solved() )
     {
@@ -319,7 +319,7 @@ bool Sudoku::update_square( const size_t i, OneSudokuSquare square )
             }
         }
         // Loop over all squares and if not solved, remove the square we just solved by updating the square
-        // (so that if that quare is now solved, it triggers another update)
+        // (so that if that quare is now solved, it triggers another update).
         for ( size_t j( 0 ); j != affected_squares_indices.size(); ++j )
         {
             OneSudokuSquare square_2 = values_[ affected_squares_indices[j] ];
@@ -394,7 +394,7 @@ bool Sudoku::there_are_contradictions() const
 
 // ********************************************************************************
 
-// Returns the three slices that contain this quare
+// Returns the three slices that contain this quare.
 std::vector< size_t > Sudoku::square2slices( const size_t square_index )
 {
     std::vector< size_t > result;
@@ -481,118 +481,6 @@ std::vector< OneSudokuSquare > Sudoku::get_slice_values( const size_t j ) const
     for ( size_t i( 0 ); i != 9; ++i )
         result.push_back( values_[ sudoku_slice_mapping[j][i] ] );
     return result;
-}
-
-// ********************************************************************************
-
-void Sudoku::initialise_trans_square_dependency_mappings()
-{
-    return;
-    size_t index_1( 0 );
-    size_t index_2( 0 );
-    // Rows
-    for ( size_t i( 0 ); i != 81; i = i+3 )
-    {
-        // index 0 is row, index 1 is column and index 2 is square
-        std::vector< size_t > slices = square2slices( i );
-        // determining_values is square minus { i, i+1, i+2 }
-        // values_to_be_changed is row minus  { i, i+1, i+2 }
-        index_2 = 0;
-        for ( size_t j( 0 ); j != 9; ++j )
-        {
-            size_t value = sudoku_slice_mapping[ slices[2] ][j];
-            if ( ( value != i     ) &&
-                 ( value != i + 1 ) &&
-                 ( value != i + 2 ) )
-            {
-                sudoku_determining_values_mapping[index_1][index_2] = value;
-                ++index_2;
-            }
-        }
-        std::vector< size_t > values_to_be_changed;
-        index_2 = 0;
-        for ( size_t j( 0 ); j != 9; ++j )
-        {
-            size_t value = sudoku_slice_mapping[ slices[0] ][j];
-            if ( ( value != i     ) &&
-                 ( value != i + 1 ) &&
-                 ( value != i + 2 ) )
-            {
-                sudoku_values_to_be_changed_mapping[index_1][index_2] = value;
-                ++index_2;
-            }
-        }
-        ++index_1;
-    }
-    // Columns
-    for ( size_t i( 0 ); i != 81; ++i )
-    {
-        if ( i > 62 )
-            continue;
-        if ( ( i > 35 ) && ( i < 54 ) )
-            continue;
-        if ( ( i >  8 ) && ( i < 27 ) )
-            continue;
-        // index 0 is row, index 1 is column and index 2 is square
-        std::vector< size_t > slices = square2slices( i );
-        // determining_values is square minus { i, i+1, i+2 }
-        // values_to_be_changed is row minus  { i, i+1, i+2 }
-        index_2 = 0;
-        for ( size_t j( 0 ); j != 9; ++j )
-        {
-            size_t value = sudoku_slice_mapping[ slices[2] ][j];
-            if ( ( value != i      ) &&
-                 ( value != i +  9 ) &&
-                 ( value != i + 18 ) )
-            {
-                sudoku_determining_values_mapping[index_1][index_2] = value;
-                ++index_2;
-            }
-        }
-        std::vector< size_t > values_to_be_changed;
-        index_2 = 0;
-        for ( size_t j( 0 ); j != 9; ++j )
-        {
-            size_t value = sudoku_slice_mapping[ slices[1] ][j];
-            if ( ( value != i      ) &&
-                 ( value != i +  9 ) &&
-                 ( value != i + 18 ) )
-            {
-                sudoku_values_to_be_changed_mapping[index_1][index_2] = value;
-                ++index_2;
-            }
-        }
-        ++index_1;
-    }
-    for ( size_t i( 0 ); i != 54; ++i )
-    {
-        std::cout << "                       { ";
-        for ( size_t j( 0 ); j != 6; ++j )
-        {
-            std::cout << " " << sudoku_determining_values_mapping[i][j];
-            if ( j != 5 )
-                std::cout << ",";
-        }
-        std::cout << " }";
-        if ( i != 53 )
-            std::cout << ",";
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    for ( size_t i( 0 ); i != 54; ++i )
-    {
-        std::cout << "                       { ";
-        for ( size_t j( 0 ); j != 6; ++j )
-        {
-            std::cout << " " << sudoku_values_to_be_changed_mapping[i][j];
-            if ( j != 5 )
-                std::cout << ",";
-        }
-        std::cout << " }";
-        if ( i != 53 )
-            std::cout << ",";
-        std::cout << std::endl;
-    }
 }
 
 // ********************************************************************************

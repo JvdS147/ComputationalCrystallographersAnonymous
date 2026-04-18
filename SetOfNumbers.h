@@ -45,14 +45,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class SetOfNumbers
 {
 public:
-    
-    
+
     // ALLOWED: duplicates are allowed
     // AUTO_REMOVE: duplicates are not allowed and are silently removed
     // THROW: Throw if a duplicate is encountered
     enum DuplicatesPolicy { ALLOWED, AUTO_REMOVE, THROW };
 
-    // Default constructor, creates an empty set,
+    // Default constructor, creates an empty set.
     explicit SetOfNumbers( const DuplicatesPolicy duplicates_policy = ALLOWED );
 
     // In keeping with C++ convention: zero-based.
@@ -64,13 +63,13 @@ public:
 
     explicit SetOfNumbers( const std::vector< size_t > & values, const DuplicatesPolicy duplicates_policy = ALLOWED );
 
-    // Throws if set to THROW and set contains duplicates
-    // If set to AUTO_REMOVE, duplicates are removed
+    // Throws if set to THROW and set contains duplicates.
+    // If set to AUTO_REMOVE, duplicates are removed.
     void set_duplicates_policy( const DuplicatesPolicy duplicates_policy );
 
     DuplicatesPolicy duplicates_policy() const { return duplicates_policy_; }
 
-    // Throws if set to true and set currently empty
+    // Throws if set to true and set currently empty.
     void set_empty_is_allowed( const bool empty_is_allowed );
 
     bool empty_is_allowed() const { return empty_is_allowed_; }
@@ -86,13 +85,13 @@ public:
 
     std::vector< size_t > values() const;
 
-    // DuplicatesPolicy is set to AUTO_REMOVE
+    // DuplicatesPolicy is set to AUTO_REMOVE.
     SetOfNumbers unique_values() const;
 
     // Returns how often value occurs in the set.
     size_t frequency( const size_t value ) const;
 
-    // If value currently already in the set, adds it again
+    // If value currently already in the set, DuplicatesPolicy decides what happens.
     void add( const size_t value );
 
     // Does nothing if value currently not in the set.
@@ -103,7 +102,7 @@ public:
 
     bool contains_duplicates() const;
 
-    // In a normal set, would be called union
+    // In a normal set, would be called union.
     // The attributes duplicates_allowed_ and empty_is_allowed_ of the
     // argument values are ignored, the values of *this are kept.
     void add( const SetOfNumbers & set_of_numbers );
@@ -112,10 +111,10 @@ public:
     // argument values are ignored, the values of *this are kept.
     void remove( const SetOfNumbers & set_of_numbers );
 
-    // In a normal set, would be called intersection
+    // In a normal set, would be called intersection.
     // The attribute duplicates_allowed_ of the
     // argument are ignored, the values of *this are kept.
-    // The attribute empty_is_allowed_ is true
+    // The attribute empty_is_allowed_ is true.
     // If *this contains three times the same value and the argument contains two times that same value, they have two in common.
     // If the argument contains three times the same value and *this contains two times that same value, they have two in common.
     SetOfNumbers in_common( const SetOfNumbers & set_of_numbers );
@@ -139,9 +138,11 @@ private:
 };
 
 // The attributes duplicates_allowed_ and empty_is_allowed_ of the
-// arguments are ignored
-// duplicates_allowed_ is set to true, empty_is_allowed_ is set to true
+// arguments are ignored.
+// duplicates_allowed_ is set to true, empty_is_allowed_ is set to true.
 SetOfNumbers merge( const SetOfNumbers & lhs, const SetOfNumbers & rhs );
+
+//void difference( const SetOfNumbers & lhs, const SetOfNumbers & rhs, SetOfNumbers & only_in_lhs, SetOfNumbers & in_common, SetOfNumbers & only_in_rhs );
 
 #endif // SETOFNUMBERS_H
 

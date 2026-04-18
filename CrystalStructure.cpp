@@ -374,7 +374,7 @@ PointGroup CrystalStructure::point_is_on_special_position( Vector3D & point, con
     while ( a_change_was_made )
     {
         a_change_was_made = false;
-        // We start at index 1 because we skip the identity
+        // We start at index 1 because we skip the identity.
         for ( size_t i( 1 ); i != space_group_.nsymmetry_operators(); ++i )
         {
             if ( used[i] )
@@ -387,14 +387,14 @@ PointGroup CrystalStructure::point_is_on_special_position( Vector3D & point, con
             {
                 used[i] = true;
                 a_change_was_made = true;
-                // Check that the symmetry operator does not have an intrinsic translation--that would be weird
+                // Check that the symmetry operator does not have an intrinsic translation--that would be weird.
                 if ( space_group_.symmetry_operator( i ).has_intrinsic_translation() )
                 {
                     std::cout << "CrystalStructure::point_is_on_special_position( Vector3D, double ) : Warning: a symmetry operator with a non-zero intrinsic translation mapped an atom onto itself." << std::endl;
                 }
                 else
                 {
-                    // Average point and point_2
+                    // Average point and point_2.
                     point += difference_vector / 2.0;
                 }
             }
@@ -410,7 +410,7 @@ PointGroup CrystalStructure::point_is_on_special_position( Vector3D & point, con
         crystal_lattice_.shortest_distance( point, point_2, distance, difference_vector );
         if ( distance < tolerance )
         {
-            // Check that the symmetry operator does not have an intrinsic translation--that would be weird
+            // Check that the symmetry operator does not have an intrinsic translation--that would be weird.
             if ( space_group_.symmetry_operator( i ).has_intrinsic_translation() )
             {
                 std::cout << "CrystalStructure::point_is_on_special_position( Vector3D, double ) : Warning: a symmetry operator with a non-zero intrinsic translation mapped an atom onto itself." << std::endl;
@@ -545,7 +545,7 @@ void CrystalStructure::reduce_to_primitive()
     if ( space_group().centring().is_primitive() )
     {
         std::cout << "CrystalStructure::reduce_to_primitive(): warning: already primitive." << std::endl;
-            return;
+        return;
     }
     Matrix3D centred2primitive = space_group().centring().to_primitive();
     Matrix3D transformation_matrix_inverse_transpose( centred2primitive );

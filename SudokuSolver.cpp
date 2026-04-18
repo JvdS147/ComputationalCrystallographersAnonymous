@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "SudokuSolver.h"
+#include "BasicMathsFunctions.h"
 #include "GenerateCombinations.h"
 #include "OneSudokuSlice.h"
 #include "SetOfNumbers.h"
@@ -39,6 +40,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 
 namespace {
+
+static const size_t col_white_squares_indices[20] = {  1,  3,  5,  7, 19, 21, 23, 25, 37, 39, 41, 43, 55, 57, 59, 61, 73, 75, 77, 79 };
+static const size_t row_white_squares_indices[20] = {  9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 45, 47, 49, 51, 53, 63, 65, 67, 69, 71 };
+
+static const size_t dark_blue_squares_indices[25] = {  0,  2,  4,  6,  8, 18, 20, 22, 24, 26, 36, 38, 40, 42, 44, 54, 56, 58, 60, 62, 72, 74, 76, 78, 80 };
+static const size_t lite_blue_squares_indices[16] = { 10, 12, 14, 16, 28, 30, 32, 34, 46, 48, 50, 52, 64, 66, 68, 70 };
 
 // ********************************************************************************
 
@@ -54,7 +61,7 @@ bool contains( const std::vector< size_t > & values, const size_t target )
 
 // ********************************************************************************
 
-// Returns true if a change was made
+// Returns true if a change was made.
 bool check_if_we_are_the_only_possibility( OneSudokuSlice & slice )
 {
     bool something_changed_on_first_pass( false );
@@ -112,7 +119,7 @@ bool check_if_we_are_the_only_possibility( OneSudokuSlice & slice )
                         {
                             SetOfNumbers set_of_numbers( combination_2 );
                             OneSudokuSquare isolated_values( set_of_numbers );
-                            // Find the squares
+                            // Find the squares.
                             for ( size_t i( 0 ); i != unsolved_squares_indices.size(); ++i )
                             {
                                 OneSudokuSquare square = slice.square( unsolved_squares_indices[i] );
@@ -138,11 +145,11 @@ bool check_if_we_are_the_only_possibility( OneSudokuSlice & slice )
         {
             // If N squares contain exactly N numbers, those N numbers cannot be anywhere else. Their frequencies are irrelevant.
             // e.g. | 459 | 45 | 45 | (two squares block 45) or | 12 | 19 | 29 | 14 | (three squares block 129).
-            // N == 1 never passes the merged.size() == N test so it is essentially ignored
+            // N == 1 never passes the merged.size() == N test so it is essentially ignored.
             std::vector< size_t > unsolved_squares_indices = slice.indices_of_unsolved_squares();
             if ( static_cast<int>( N ) > ( static_cast<int>( unsolved_squares_indices.size() ) - 1 ) )
                 break;
-            // Add the unknowns from any combination of N squares and check if there are N unknowns
+            // Add the unknowns from any combination of N squares and check if there are N unknowns.
             GenerateCombinations generate_combinations( unsolved_squares_indices, N );
             std::vector< size_t > combination;
             while ( generate_combinations.next_combination( combination ) )
@@ -152,15 +159,15 @@ bool check_if_we_are_the_only_possibility( OneSudokuSlice & slice )
                     merged = merge( merged, slice.square( combination[i] ) );
                 if ( merged.size() == N )
                 {
-                    // Unset these values in the other squares
+                    // Unset these values in the other squares.
                     for ( size_t i( 0 ); i != slice.size(); ++i )
                     {
+                        if ( contains( combination, i ) )
+                            continue;
                         OneSudokuSquare square = slice.square( i );
                         if ( square.solved() )
                             continue;
-                        if ( contains( combination, i ) )
-                            continue;
-                        if ( square.unset( merged ) )
+                        if ( square.unset( merged.values() ) )
                         {
                             slice.set_square( i, square );
                             something_changed_on_first_pass = true;
@@ -207,9 +214,10 @@ bool holistic( Sudoku & sudoku )
             SetOfNumbers all_possible_numbers = determining_values.collect_all_possible_numbers();
             if ( all_possible_numbers.size() != 9 )
             {
-                // Invert the selection
-                OneSudokuSquare square; // Initialises to all 9 possibilities
-                square.unset( all_possible_numbers );
+                // Invert the selection.
+				SetOfNumbers square( 1, 9, SetOfNumbers::THROW ); // Initialises to all 9 possibilities.
+				square.set_empty_is_allowed( false );
+				square.remove( all_possible_numbers );
                 OneSudokuSlice values_to_be_changed = tsd.values_to_be_changed();
                 bool there_was_a_change( false );
                 for ( size_t j( 0 ); j != values_to_be_changed.size(); ++j )
@@ -218,9 +226,6 @@ bool holistic( Sudoku & sudoku )
                     if ( square_2.unset( square ) )
                     {
                         values_to_be_changed.set_square( j, square_2 );
-           //             std::cout << "Holistic eliminated ";
-         //               square.show();
-           //             std::cout << std::endl;
                         something_changed_on_first_pass = true;
                         a_change_was_made = true;
                         there_was_a_change = true;
@@ -553,20 +558,20 @@ bool apply_X_Wings( Sudoku & sudoku )
 bool empty_rectangle( Sudoku & sudoku )
 {
     bool something_changed_on_first_pass( false );
-    // Find an empty rectangle block
+    // Find an empty rectangle block.
     for ( size_t i( 0 ); i != 9; ++i )
     {
         OneSudokuSlice block = sudoku.block( i );
-        // There must be at least four solved squares
+        // There must be at least four solved squares.
         SetOfNumbers indices_of_solved_squares = SetOfNumbers( block.indices_of_solved_squares() );
         if ( indices_of_solved_squares.size() < 4 )
             continue;
-        // There must be at least two unsolved squares
+        // There must be at least two unsolved squares.
         if ( indices_of_solved_squares.size() > 7 )
             continue;
         // I should be able to draw exactly one horizontal line and one vertical line and that should cut all of the unsolved ones
         // and it should not be possible to cut all of the unsolved ones with a single line
-        // This means that the block lay-outs must be defined in the same way for each block, which is the case
+        // This means that the block lay-outs must be defined in the same way for each block, which is the case.
         bool found( false );
         size_t row;
         size_t col;
@@ -586,7 +591,7 @@ bool empty_rectangle( Sudoku & sudoku )
                      ( block.square( rc2index[row_p1.current_value()][col_m1.current_value()] ).solved() ) &&
                      ( block.square( rc2index[row_p1.current_value()][col_p1.current_value()] ).solved() ) )
                 {
-                    // Check unsolved squares are not all in one line
+                    // Check unsolved squares are not all in one line.
                     if ( ( ( ! block.square( rc2index[row_m1.current_value()][iCol] ).solved() ) || ( ! block.square( rc2index[row_p1.current_value()][iCol] ).solved() ) ) && 
                          ( ( ! block.square( rc2index[iRow][col_m1.current_value()] ).solved() ) || ( ! block.square( rc2index[iRow][col_p1.current_value()] ).solved() ) ) )
                     {
@@ -602,21 +607,425 @@ bool empty_rectangle( Sudoku & sudoku )
         }
         if ( ! found )
             continue;
-        
-        
-
 
     }
-
     return something_changed_on_first_pass;
+}
+
+// ********************************************************************************
+
+bool update_trivial_cases( Sudoku & sudoku )
+{
+	bool result( false );
+    for ( size_t i( 0 ); i != Sudoku::number_of_slices(); ++i )
+    {
+        if ( sudoku.solved() )
+       	    return false;
+        OneSudokuSlice slice = sudoku.next_slice();
+        if ( check_if_we_are_the_only_possibility( slice ) )
+        {
+            sudoku.update_slice( slice );
+            result = true;
+        }
+    }
+    return result;
+}
+
+// ********************************************************************************
+
+bool apply_checkerboard( Sudoku & sudoku )
+{
+    // @@ We are constanly redetermining all of this. This could be a property
+    // of the Sudoku object.
+
+    // It is weird, but all "white" squares in columns must be identical to all white squares in rows.
+    bool result( false );
+    std::vector< OneSudokuSquare > col_white_squares;
+    std::vector< OneSudokuSquare > row_white_squares;
+    std::vector< size_t > col_status_values;
+    std::vector< size_t > row_status_values;
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        col_white_squares.push_back( sudoku.square( col_white_squares_indices[ i ] ) );
+        col_status_values.push_back( col_white_squares[i].size() );
+    }
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        row_white_squares.push_back( sudoku.square( row_white_squares_indices[ i ] ) );
+        row_status_values.push_back( row_white_squares[i].size() );
+    }
+    // I am not sure yet how to actually use this information?
+    // The most straightforward way is if one of the two sets more singletons than the other.
+    // We could sort first, or remove all pairs of matching singletons.
+    // We do not really want to remove any of the members of col_white_squares or row_white_squares
+    // because removing is difficult and because we would lose the information which square in
+    // the original sudoku it mapped to.
+    // "0" means it has been used. "1" means it can only contain one digit (i.e. has been solved)
+    // but we have not found its counterpart yet. "2" or higher is the number of remaining digits in this square.
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( col_status_values[i] != 1 )
+            continue;
+        for ( size_t j( 0 ); j != 20; ++j )
+        {
+            if ( row_status_values[j] != 1 )
+               continue;
+            if ( col_white_squares[i].value() == row_white_squares[j].value() )
+            {
+                col_status_values[i] = 0;
+                row_status_values[j] = 0;
+                break;
+            }
+        }
+    }
+    // How many solved squares that have not been matched yet are left?
+    size_t nunmatched_cols( 0 );
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( col_status_values[i] == 1 )
+           ++nunmatched_cols;
+    }
+    size_t nunmatched_rows( 0 );
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( row_status_values[i] == 1 )
+           ++nunmatched_rows;
+    }
+    if ( nunmatched_cols > 0 )
+    {
+        for ( size_t i( 0 ); i != 20; ++i )
+        {
+            if ( col_status_values[i] == 1 )
+            {
+                size_t value_to_find = col_white_squares[i].value();
+                size_t npossible_squares( 0 );
+                size_t square_index( 21 );
+                for ( size_t j( 0 ); j != 20; ++j )
+                {
+                    if ( row_status_values[j] < 2 )
+                       continue;
+                    if ( row_white_squares[j].contains( value_to_find ) )
+                    {
+                       ++npossible_squares;
+                       square_index = j;
+                    }
+                }
+                if ( npossible_squares == 1 )
+                {
+                    result = true; // Something changed.
+                    sudoku.update_square( row_white_squares_indices[ square_index ], OneSudokuSquare( value_to_find ) );
+                    col_status_values[i] = 0;
+                    row_status_values[ square_index ] = 0;
+                    --nunmatched_cols;
+                }
+            }
+        }
+    }
+    if ( nunmatched_rows > 0 )
+    {
+        for ( size_t i( 0 ); i != 20; ++i )
+        {
+            if ( row_status_values[i] == 1 )
+            {
+                size_t value_to_find = row_white_squares[i].value();
+                size_t npossible_squares( 0 );
+                size_t square_index( 21 );
+                for ( size_t j( 0 ); j != 20; ++j )
+                {
+                    if ( col_status_values[j] < 2 )
+                       continue;
+                    if ( col_white_squares[j].contains( value_to_find ) )
+                    {
+                       ++npossible_squares;
+                       square_index = j;
+                    }
+                }
+                if ( npossible_squares == 1 )
+                {
+                    result = true; // Something changed.
+                    sudoku.update_square( col_white_squares_indices[ square_index ], OneSudokuSquare( value_to_find ) );
+                    row_status_values[i] = 0;
+                    col_status_values[ square_index ] = 0;
+                    --nunmatched_rows;
+                }
+            }
+        }
+    }
+    // Whatever is now left in the columns must also be present in the rows and vice versa.
+    // So if either the columns or the rows contain a number that is not present in the other,
+    // then that digit can be deleted.
+
+    SetOfNumbers possible_values_col( SetOfNumbers::AUTO_REMOVE );
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( col_status_values[i] == 0 )
+           continue;
+        possible_values_col.add( col_white_squares[i].values() );
+    }
+    SetOfNumbers possible_values_row( SetOfNumbers::AUTO_REMOVE );
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( row_status_values[i] == 0 )
+           continue;
+        possible_values_row.add( row_white_squares[i].values() );
+    }
+
+    SetOfNumbers in_common = possible_values_col.in_common( possible_values_row );
+  //  in_common.show();
+    for ( size_t i( 0 ); i != possible_values_col.size(); ++i )
+    {
+        if ( in_common.contains( possible_values_col.value( i ) ) )
+           continue;
+        // When we are here, we can remove the value possible_values_col.value( i ) from all row_white_squares that do not have a row_status_values of 0.
+        for ( size_t j( 0 ); j != 20; ++j )
+        {
+            if ( row_status_values[j] == 0 )
+               continue;
+            if ( row_white_squares[j].contains( possible_values_col.value( i ) ) )
+            {
+                row_white_squares[j].unset( possible_values_col.value( i ) );
+                sudoku.update_square( row_white_squares_indices[j], row_white_squares[j] );
+                result = true; // Something changed.
+                std::cout << "apply_checkerboard() final did something." << std::endl;
+            }
+        }
+    }
+
+    for ( size_t i( 0 ); i != possible_values_row.size(); ++i )
+    {
+        if ( in_common.contains( possible_values_row.value( i ) ) )
+           continue;
+        // When we are here, we can remove the value possible_values_row.value( i ) from all col_white_squares that do not have a col_status_values of 0.
+        for ( size_t j( 0 ); j != 20; ++j )
+        {
+            if ( col_status_values[j] == 0 )
+               continue;
+            if ( col_white_squares[j].contains( possible_values_row.value( i ) ) )
+            {
+                col_white_squares[j].unset( possible_values_row.value( i ) );
+                sudoku.update_square( col_white_squares_indices[j], col_white_squares[j] );
+                result = true; // Something changed.
+                std::cout << "apply_checkerboard() final did something." << std::endl;
+            }
+        }
+    }
+
+    // Are in dark blue or in lite blue all of a certain digit solved? Then we know how often it occurs in the other one.
+
+    // We can subtract the solved white squares (both columns and rows) from the maximum
+    // number of times a digit can occur (5 in dark blue, 4 in lite blue).
+    std::vector< size_t > nsolved_per_digit_white_squares( 9, 0 );
+    for ( size_t i( 0 ); i != 20; ++i )
+    {
+        if ( col_white_squares[i].size() == 1 )
+           ++nsolved_per_digit_white_squares[ col_white_squares[i].value() - 1 ];
+        if ( row_white_squares[i].size() == 1 )
+           ++nsolved_per_digit_white_squares[ row_white_squares[i].value() - 1 ];
+    }
+    std::vector< size_t > max_per_digit_dark_blue_squares( 9, 5 );
+    std::vector< size_t > max_per_digit_lite_blue_squares( 9, 4 );
+    for ( size_t j( 0 ); j != 9; ++j )
+    {
+        max_per_digit_dark_blue_squares[j] -= nsolved_per_digit_white_squares[j];
+        max_per_digit_lite_blue_squares[j] -= nsolved_per_digit_white_squares[j];
+    }
+
+    std::vector< OneSudokuSquare > dark_blue_squares;
+    std::vector< OneSudokuSquare > lite_blue_squares;
+    std::vector< size_t > dark_blue_status_values;
+    std::vector< size_t > lite_blue_status_values;
+    std::vector< size_t > nsolved_per_digit_dark_blue_squares( 9, 0 );
+    std::vector< size_t > nsolved_per_digit_lite_blue_squares( 9, 0 );
+    for ( size_t i( 0 ); i != 25; ++i )
+    {
+        dark_blue_squares.push_back( sudoku.square( dark_blue_squares_indices[ i ] ) );
+        dark_blue_status_values.push_back( dark_blue_squares[i].size() );
+        if ( dark_blue_squares[i].size() == 1 )
+        {
+           ++nsolved_per_digit_dark_blue_squares[ dark_blue_squares[i].value() - 1 ];
+        }
+    }
+    for ( size_t i( 0 ); i != 16; ++i )
+    {
+        lite_blue_squares.push_back( sudoku.square( lite_blue_squares_indices[ i ] ) );
+        lite_blue_status_values.push_back( lite_blue_squares[i].size() );
+        if ( lite_blue_squares[i].size() == 1 )
+        {
+           ++nsolved_per_digit_lite_blue_squares[ lite_blue_squares[i].value() - 1 ];
+        }
+    }
+    // We are going to test two equalities:
+    // 1. nsolved_per_digit_dark_blue_squares[i] + nsolved_per_digit_lite_blue_squares[i] == odd.
+    // 2. nsolved_per_digit_dark_blue_squares[i] == nsolved_per_digit_lite_blue_squares[i] + 1.
+
+    // If one digit has been solved four times in lite, then it must occur five times in dark.
+    for ( size_t j( 0 ); j != 9; ++j )
+    {
+        if ( ( nsolved_per_digit_dark_blue_squares[j] == max_per_digit_dark_blue_squares[j] ) &&
+             ( nsolved_per_digit_lite_blue_squares[j] != max_per_digit_lite_blue_squares[j] ) )
+        {
+            // How many times does it occur in the unsolved squares?
+            size_t noccurrences( 0 );
+            for ( size_t i( 0 ); i != 16; ++i )
+            {
+                if ( lite_blue_status_values[i] == 1 )
+                   continue;
+                if ( lite_blue_squares[i].contains( j+1 ) )
+                   ++noccurrences;
+            }
+            if ( nsolved_per_digit_dark_blue_squares[j] == ( nsolved_per_digit_lite_blue_squares[j] + noccurrences + 1 ) )
+            {
+                std::cout << "apply_checkerboard() yes 1 will do something." << std::endl;
+                for ( size_t i( 0 ); i != 16; ++i )
+                {
+                    if ( lite_blue_status_values[i] == 1 )
+                       continue;
+                    if ( lite_blue_squares[i].contains( j+1 ) )
+                    {
+                        lite_blue_squares[i] = OneSudokuSquare( j+1 );
+                        lite_blue_status_values[i] = 1;
+                        sudoku.update_square( lite_blue_squares_indices[i], OneSudokuSquare( j+1 ) );
+                        ++nsolved_per_digit_lite_blue_squares[j];
+                        result = true; // Something changed.
+                        std::cout << "apply_checkerboard() yes 1 did something." << std::endl;
+                    }
+                }
+            }
+        }
+        if ( ( nsolved_per_digit_dark_blue_squares[j] != max_per_digit_dark_blue_squares[j] ) &&
+             ( nsolved_per_digit_lite_blue_squares[j] == max_per_digit_lite_blue_squares[j] ) )
+        {
+            // How many times does it occur in the unsolved squares?
+            size_t noccurrences( 0 );
+            for ( size_t i( 0 ); i != 25; ++i )
+            {
+                if ( dark_blue_status_values[i] == 1 )
+                   continue;
+                if ( dark_blue_squares[i].contains( j+1 ) )
+                   ++noccurrences;
+            }
+            if ( ( nsolved_per_digit_lite_blue_squares[j] + 1 ) == ( nsolved_per_digit_dark_blue_squares[j] + noccurrences ) )
+            {
+                std::cout << "apply_checkerboard() yes 2 will do something." << std::endl;
+                for ( size_t i( 0 ); i != 25; ++i )
+                {
+                    if ( dark_blue_status_values[i] == 1 )
+                       continue;
+                    if ( dark_blue_squares[i].contains( j+1 ) )
+                    {
+                        dark_blue_squares[i] = OneSudokuSquare( j+1 );
+                        dark_blue_status_values[i] = 1;
+                        sudoku.update_square( dark_blue_squares_indices[i], OneSudokuSquare( j+1 ) );
+                        ++nsolved_per_digit_dark_blue_squares[j];
+                        result = true; // Something changed.
+                        std::cout << "apply_checkerboard() yes 2 did something." << std::endl;
+                    }
+                }
+            }
+        }
+    }
+
+    for ( size_t j( 0 ); j != 9; ++j )
+    {
+        if ( is_even( nsolved_per_digit_dark_blue_squares[j] + nsolved_per_digit_lite_blue_squares[j] ) )
+        {
+            // If currently an even number has been solved, and there is only one possibility left among the unsolved squares, then we must set it.
+    //        nunsolved
+   //         std::cout << "Yes.3..." << std::endl;
+        }
+    }
+
+return result;
+
+
+    // Both equalities remain true if I remove a solved digit simultaneously from dark and from lite.
+    // But I *cannot* remove two of the same solved digit from either dark or lite, because then 
+    // condition 2. can no longer be tested.
+    // Are there any solved digits that occur once in each? Then set their status to 0.
+    for ( size_t j( 0 ); j != 9; ++j )
+    {
+        if ( ( nsolved_per_digit_dark_blue_squares[j] > 0 ) &&
+             ( nsolved_per_digit_lite_blue_squares[j] > 0 ) )
+        {
+     //       std::cout << "So far, so good." << std::endl;
+            for ( size_t i( 0 ); i != 25; ++i )
+            {
+                if ( dark_blue_status_values[i] == 0 )
+                   continue;
+                if ( ( dark_blue_status_values[i] == 1 ) && ( dark_blue_squares[i].value() == j+1 ) )
+                {
+                    dark_blue_status_values[i] = 0;
+     //               --nsolved_dark_blue_squares;
+                    --nsolved_per_digit_dark_blue_squares[ j ];
+                    break;
+                }
+            }
+            for ( size_t i( 0 ); i != 16; ++i )
+            {
+                if ( lite_blue_status_values[i] == 0 )
+                   continue;
+                if ( ( lite_blue_status_values[i] == 1 ) && ( lite_blue_squares[i].value() == j+1 ) )
+                {
+                    lite_blue_status_values[i] = 0;
+     //               --nsolved_lite_blue_squares;
+                    --nsolved_per_digit_lite_blue_squares[ j ];
+                    break;
+                }
+            }
+        }
+    }
+
+// If currently the sum of solved digits is even and in the unsolved squares it only occurs once, then that must be set
+
+    // I am not sure yet how to actually use this information?
+    // The most straightforward way is if one of the two sets more singletons than the other.
+    // We could sort first, or remove all pairs of matching singletons.
+    // We do not really want to remove any of the members of col_white_squares or row_white_squares
+    // because removing is difficult and because we would lose the information which square in
+    // the original sudoku it mapped to.
+    // "0" means it has been used. "1" means it can only contain one digit (i.e. has been solved)
+    // but we have not found its counterpart yet. "2" or higher is the number of remaining digits in this square.
+//    for ( size_t i( 0 ); i != 20; ++i )
+//    {
+//        if ( col_status_values[i] != 1 )
+//            continue;
+//        for ( size_t j( 0 ); j != 20; ++j )
+//        {
+//            if ( row_status_values[j] != 1 )
+//               continue;
+//            if ( col_white_squares[i].value() == row_white_squares[j].value() )
+//            {
+//                col_status_values[i] = 0;
+//                row_status_values[j] = 0;
+//                break;
+//            }
+//        }
+//    }
+//    // How many solved squares that have not been matched yet are left?
+//    size_t nunmatched_cols( 0 );
+//    for ( size_t i( 0 ); i != 20; ++i )
+//    {
+//        if ( col_status_values[i] == 1 )
+//           ++nunmatched_cols;
+//    }
+//    size_t nunmatched_rows( 0 );
+//    for ( size_t i( 0 ); i != 20; ++i )
+//    {
+//        if ( row_status_values[i] == 1 )
+//           ++nunmatched_rows;
+//    }
+
+    return result;
 }
 
 } // namespace
 
 // ********************************************************************************
 
-void solve_without_guessing( Sudoku & result, bool & error_caught )
+void solve_without_guessing( Sudoku & result, bool & error_caught, size_t & counter )
 {
+    ++counter;
+//    std::cout << "Now entering solve_without_guessing()." << std::endl;
     error_caught = false;
     try
     {
@@ -624,81 +1033,36 @@ void solve_without_guessing( Sudoku & result, bool & error_caught )
         while ( there_were_changes && ( ! result.solved() ) && ( ! result.there_are_contradictions() ) )
         {
             there_were_changes = false;
-        //    result.show();
-        //    std::cout << std::endl;
-            bool there_was_a_change( true );
-            while ( there_was_a_change )
+            while ( update_trivial_cases( result ) )
             {
-                there_was_a_change = false;
-                for ( size_t i( 0 ); i != Sudoku::number_of_slices(); ++i )
-                {
-                    if ( ! result.solved() )
-                    {
-                        OneSudokuSlice slice = result.next_slice();
-                        if ( check_if_we_are_the_only_possibility( slice ) )
-                        {
-                            result.update_slice( slice );
-                            there_was_a_change = true;
-                            there_were_changes = true;
-                        }
-                    }
-                }
+                there_were_changes = true;
             }
             if ( holistic( result ) )
             {
                 there_were_changes = true;
-                for ( size_t i( 0 ); i != Sudoku::number_of_slices(); ++i )
-                {
-                    if ( ! result.solved() )
-                    {
-                        OneSudokuSlice slice = result.next_slice();
-                        if ( check_if_we_are_the_only_possibility( slice ) )
-                        {
-                            result.update_slice( slice );
-//                            std::cout << "N-checks did something after holistic()." << std::endl;
-                        }
-                    }
-                }
+                update_trivial_cases( result );
             }
             if ( apply_X_Wings( result ) )
             {
                 there_were_changes = true;
-                for ( size_t i( 0 ); i != Sudoku::number_of_slices(); ++i )
-                {
-                    if ( ! result.solved() )
-                    {
-                        OneSudokuSlice slice = result.next_slice();
-                        if ( check_if_we_are_the_only_possibility( slice ) )
-                        {
-                            result.update_slice( slice );
-//                            std::cout << "N-checks did something after apply_X_Wings()." << std::endl;
-                        }
-                    }
-                }
+                update_trivial_cases( result );
             }
             if ( empty_rectangle( result ) )
             {
                 there_were_changes = true;
-                for ( size_t i( 0 ); i != Sudoku::number_of_slices(); ++i )
-                {
-                    if ( ! result.solved() )
-                    {
-                        OneSudokuSlice slice = result.next_slice();
-                        if ( check_if_we_are_the_only_possibility( slice ) )
-                        {
-                            result.update_slice( slice );
-//                            std::cout << "N-checks did something after empty_rectangle()." << std::endl;
-                        }
-                    }
-                }
+                update_trivial_cases( result );
+            }
+            if ( apply_checkerboard( result ) )
+            {
+                there_were_changes = true;
+                update_trivial_cases( result );
+                std::cout << "apply_checkerboard() did something." << std::endl;
             }
         }
     }
     catch ( std::exception & e )
     {
         error_caught = true;
-  //      std::cout << "ERROR caught" << std::endl;
-  //      std::cout << e.what() << std::endl;
     }
 }
 
@@ -714,13 +1078,14 @@ Sudoku solve( const Sudoku & sudoku )
     size_t nguesses( 0 );
     bool error_caught( false );
     size_t max_sp( 0 );
+    size_t solve_without_guessing_counter( 0 );
     do
     {
         if ( sudoku_guesses.stack_pointer() > max_sp )
             max_sp = sudoku_guesses.stack_pointer();
 //        std::cout << "stack pointer = " << sudoku_guesses.stack_pointer() << ", max. stack pointer = " << max_sp << std::endl;
         ++niterations;
-        solve_without_guessing( result, error_caught );
+        solve_without_guessing( result, error_caught, solve_without_guessing_counter );
         if ( result.solved() )
             std::cout << "The sudoku has been solved without the need for guessing." << std::endl;
         else if ( ( ! error_caught ) && ( ! result.there_are_contradictions() ) )
@@ -734,46 +1099,46 @@ Sudoku solve( const Sudoku & sudoku )
                     continue;
                 if ( result.square( square_index ).values().size() > 2 )
                     continue;
-                // Try the first value
+                // Try the first value.
                 sudoku_guesses.push( result );
                 OneSudokuSquare square = result.square( square_index );
                 square = OneSudokuSquare( square.value( 0 ) );
                 result.update_square( square_index, square );
-                solve_without_guessing( result, error_caught_2 );
+                solve_without_guessing( result, error_caught_2, solve_without_guessing_counter );
                 if ( result.solved() )
                     break;
                 if ( error_caught_2 || result.there_are_contradictions() )
                 {
-                    // Undo last guess
+                    // Undo last guess.
                     result = sudoku_guesses.pop();
                     OneSudokuSquare square = result.square( square_index );
                     square.unset( square.value( 0 ) );
                     result.update_square( square_index, square );
 //                    std::cout << "We solved a square by contradiction." << std::endl;
-                    solve_without_guessing( result, error_caught_2 );
+                    solve_without_guessing( result, error_caught_2, solve_without_guessing_counter );
                 }
-                else // Try the second value
+                else // Try the second value.
                 {
-                    // Undo last guess
+                    // Undo last guess.
                     result = sudoku_guesses.pop();
                     sudoku_guesses.push( result );
                     OneSudokuSquare square = result.square( square_index );
                     square = OneSudokuSquare( square.value( 1 ) );
                     result.update_square( square_index, square );
-                    solve_without_guessing( result, error_caught_2 );
+                    solve_without_guessing( result, error_caught_2, solve_without_guessing_counter );
                     if ( error_caught_2 || result.there_are_contradictions() )
                     {
-                        // Undo last guess
+                        // Undo last guess.
                         result = sudoku_guesses.pop();
                         OneSudokuSquare square = result.square( square_index );
                         square.unset( square.value( 1 ) );
                         result.update_square( square_index, square );
 //                        std::cout << "We solved a square by contradiction." << std::endl;
-                        solve_without_guessing( result, error_caught_2 );
+                        solve_without_guessing( result, error_caught_2, solve_without_guessing_counter );
                     }
-                    else // We have not learned anything new, restore the old state
+                    else // We have not learned anything new, restore the old state.
                     {
-                        // Undo last guess
+                        // Undo last guess.
                         result = sudoku_guesses.pop();
                     }
                 }
@@ -798,7 +1163,7 @@ Sudoku solve( const Sudoku & sudoku )
                         result.show();
                         throw std::runtime_error( "Programming error." );
                     }
-                    // Undo last guess
+                    // Undo last guess.
                     result = sudoku_guesses.pop();
                     size_t square_index = square_indices.pop();
                     size_t guessed_number_index = guessed_number_indices.pop();
@@ -806,7 +1171,7 @@ Sudoku solve( const Sudoku & sudoku )
                     if ( guessed_number_index == result.square( square_index ).size() )
                     {
                         guessed_number_index = 0;
-                        // Find next square that has not been solved
+                        // Find next square that has not been solved.
                         for ( size_t i( square_index+1 ); i != result.nsquares(); ++i )
                         {
                             if ( ! result.square( i ).solved() )
@@ -833,7 +1198,7 @@ Sudoku solve( const Sudoku & sudoku )
             }
             else
             {
-                // Find first square that has not been solved
+                // Find first square that has not been solved.
                 size_t square_index( result.nsquares() );
                 for ( size_t i( 0 ); i != result.nsquares(); ++i )
                 {
@@ -853,6 +1218,7 @@ Sudoku solve( const Sudoku & sudoku )
             }
         }
     } while ( ! result.solved() );
+    std::cout << "solve_without_guessing_counter: " << solve_without_guessing_counter << std::endl;
     std::cout << "Number of iterations: " << niterations % 27 << std::endl;
     std::cout << "stack pointer = " << sudoku_guesses.stack_pointer() << ", max. stack pointer = " << max_sp << std::endl;
     return result;

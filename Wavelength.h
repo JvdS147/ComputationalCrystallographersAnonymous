@@ -73,7 +73,7 @@ class Wavelength
 {
 public:
 
-    enum RadiationSource { SYNCHROTRON, Cu, Cr, Fe, Co, Mo };
+    enum RadiationSource { Cu, Cr, Fe, Co, Mo, SYNCHROTRON };
 
     // Throws if radiation_type is SYNCHROTRON, because that would require a wavelength.
     explicit Wavelength( const RadiationSource radiation_source = Cu, const bool is_monochromated = true, const bool use_average = false );
