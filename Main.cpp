@@ -1,5 +1,5 @@
 /* *********************************************
-Copyright (c) 2013-2025, Cornelis Jan (Jacco) van de Streek
+Copyright (c) 2013-2026, Cornelis Jan (Jacco) van de Streek
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Angle.h"
 #include "AnisotropicDisplacementParameters.h"
 //#include "BFDH.h"
+#include "BasicMathsFunctions.h"
 #include "BondDetector.h"
 #include "Centring.h"
 #include "ChebyshevBackground.h"
@@ -246,7 +247,7 @@ void add_all_torsions_in_ring( const std::vector< std::string > & ring_labels, s
     }
 }
 
-// Turn BUFBEM11_01 and BUFBEM11_02 etc. into BUFBEM11
+// Turn BUFBEM11_01 and BUFBEM11_02 etc. into BUFBEM11.
 std::string disordered_identifier_to_refcode( const std::string & input )
 {
     if ( input.length() == 9 )
@@ -268,6 +269,202 @@ int main( int argc, char** argv )
         std::cout << "An exception was thrown" << std::endl;
         std::cout << e.what() << std::endl;
     }
+
+    try // Loop over all space groups to test constraints.
+    {
+        TextFileReader_2 input_file( FileName( "IT.cif" ) );
+        if ( input_file.size() != 8795 )
+            throw std::runtime_error( "read_cif(): symmetry line must have same number of items as specified in loop." );
+        Angle two_theta_start( 0.0, Angle::DEGREES );
+        Angle two_theta_end(  45.0, Angle::DEGREES );
+        Angle two_theta_step( 0.01, Angle::DEGREES );
+        double FWHM( 0.1 );
+        size_t iLine( 0 );
+        std::vector< std::string > words;
+        for ( size_t i( 0 ); i != 230; ++i )
+        {
+            std::string space_group_name = input_file.line( iLine ).substr( 5 );
+            space_group_name = space_group_name.substr( 0, space_group_name.find_first_of( "(" ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double a = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double b = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double c = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle alpha = Angle::from_degrees( string2double( words[1] ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle beta = Angle::from_degrees( string2double( words[1] ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle gamma = Angle::from_degrees( string2double( words[1] ) );
+            CrystalLattice crystal_lattice( a, b, c, alpha, beta, gamma );
+            iLine += 3;
+            std::vector< SymmetryOperator > symmetry_operators;
+            bool finished( false );
+            do // Read the symmetry operators.
+            {
+                words = split( input_file.line( iLine ) );
+                if ( ( words[0][0] == '_' ) || ( words[0] == "loop_" ) )
+                {
+                    finished = true;
+                }
+                else
+                {
+                    if ( words.size() != 1 )
+                        throw std::runtime_error( "read_cif(): symmetry line must have same number of items as specified in loop." );
+                    SymmetryOperator symmetry_operator( words[0] );
+                    symmetry_operators.push_back( symmetry_operator );
+                    ++iLine;
+                }
+            } while ( ! finished );
+            {
+                bool at_least_one_hit( false );
+                SpaceGroup space_group( symmetry_operators, space_group_name );
+                CrystalStructure crystal_structure;
+                crystal_structure.set_crystal_lattice( crystal_lattice );
+                crystal_structure.set_space_group( space_group );
+                crystal_structure.add_atom( Atom( Element( "C" ), Vector3D( 0.217391, 0.304348, 0.565217), std::string( "C1" ) ) );
+
+                crystal_structure.apply_space_group_symmetry();
+                PowderPatternCalculator powder_pattern_calculator( crystal_structure );
+                powder_pattern_calculator.set_two_theta_start( two_theta_start );
+                powder_pattern_calculator.set_two_theta_end( two_theta_end );
+                powder_pattern_calculator.set_two_theta_step( two_theta_step );
+                powder_pattern_calculator.set_FWHM( FWHM );
+                PowderPattern powder_pattern;
+                powder_pattern_calculator.calculate( powder_pattern );
+
+                CrystalStructure crystal_structure_i;
+                crystal_structure_i.set_crystal_lattice( crystal_lattice );
+                crystal_structure_i.set_space_group( space_group );
+                crystal_structure_i.add_atom( Atom( Element( "C" ), Vector3D( -0.217391, -0.304348, -0.565217), std::string( "C1" ) ) );
+                crystal_structure_i.apply_space_group_symmetry();
+                PowderPatternCalculator powder_pattern_calculator_i( crystal_structure_i );
+                powder_pattern_calculator_i.set_two_theta_start( two_theta_start );
+                powder_pattern_calculator_i.set_two_theta_end( two_theta_end );
+                powder_pattern_calculator_i.set_two_theta_step( two_theta_step );
+                powder_pattern_calculator_i.set_FWHM( FWHM );
+                PowderPattern powder_pattern_i;
+                powder_pattern_calculator_i.calculate( powder_pattern_i );
+                double nwcc_i = normalised_weighted_cross_correlation( powder_pattern, powder_pattern_i, Angle( 0.01, Angle::DEGREES ) );
+                if ( nwcc_i < 0.99999 )
+                {
+                    if ( ! at_least_one_hit )
+                        std::cout << space_group_name << std::endl;
+                    std::cout << "i: " << nwcc_i << std::endl;
+                    at_least_one_hit = true;
+
+                    CrystalStructure crystal_structure_z;
+                    crystal_structure_z.set_crystal_lattice( crystal_lattice );
+                    crystal_structure_z.set_space_group( space_group );
+                    crystal_structure_z.add_atom( Atom( Element( "C" ), Vector3D( 0.217391, 0.304348, -0.565217), std::string( "C1" ) ) );
+                    crystal_structure_z.apply_space_group_symmetry();
+                    PowderPatternCalculator powder_pattern_calculator_z( crystal_structure_z );
+                    powder_pattern_calculator_z.set_two_theta_start( two_theta_start );
+                    powder_pattern_calculator_z.set_two_theta_end( two_theta_end );
+                    powder_pattern_calculator_z.set_two_theta_step( two_theta_step );
+                    powder_pattern_calculator_z.set_FWHM( FWHM );
+                    PowderPattern powder_pattern_z;
+                    powder_pattern_calculator_z.calculate( powder_pattern_z );
+                    double nwcc_z = normalised_weighted_cross_correlation( powder_pattern, powder_pattern_z, Angle( 0.01, Angle::DEGREES ) );
+                    if ( nwcc_z < 0.99999 )
+                    {
+                        if ( ! at_least_one_hit )
+                            std::cout << space_group_name << std::endl;
+                        std::cout << "-z: " << nwcc_z << std::endl;
+                        at_least_one_hit = true;
+                    }
+                    
+                    CrystalStructure crystal_structure_x;
+                    crystal_structure_x.set_crystal_lattice( crystal_lattice );
+                    crystal_structure_x.set_space_group( space_group );
+                    crystal_structure_x.add_atom( Atom( Element( "C" ), Vector3D( 0.217391, -0.304348, 0.565217), std::string( "C1" ) ) );
+                    crystal_structure_x.apply_space_group_symmetry();
+                    PowderPatternCalculator powder_pattern_calculator_x( crystal_structure_x );
+                    powder_pattern_calculator_x.set_two_theta_start( two_theta_start );
+                    powder_pattern_calculator_x.set_two_theta_end( two_theta_end );
+                    powder_pattern_calculator_x.set_two_theta_step( two_theta_step );
+                    powder_pattern_calculator_x.set_FWHM( FWHM );
+                    PowderPattern powder_pattern_x;
+                    powder_pattern_calculator_x.calculate( powder_pattern_x );
+                    double nwcc_x = normalised_weighted_cross_correlation( powder_pattern, powder_pattern_x, Angle( 0.01, Angle::DEGREES ) );
+                    if ( nwcc_x < 0.99999 )
+                    {
+                        if ( ! at_least_one_hit )
+                            std::cout << space_group_name << std::endl;
+                        std::cout << "-y: " << nwcc_x << std::endl;
+                        at_least_one_hit = true;
+                    }
+                }
+                
+                
+                if ( at_least_one_hit )
+                    std::cout << std::endl;
+            }
+            iLine += 10;
+        }
+    MACRO_END_GAME
+
+    try // Sudoku.
+    {
+        if ( true ) // Learn something (Empty Rectangle)
+        {
+            std::vector< std::string > sudoku_string;
+            sudoku_string.push_back( "800006305" );
+            sudoku_string.push_back( "040000070" );
+            sudoku_string.push_back( "000000000" );
+            sudoku_string.push_back( "010038704" );
+            sudoku_string.push_back( "000104000" );
+            sudoku_string.push_back( "300070290" );
+            sudoku_string.push_back( "000003000" );
+            sudoku_string.push_back( "020000040" );
+            sudoku_string.push_back( "506800002" );
+            Sudoku sudoku( sudoku_string );
+            std::cout << "###############################################" << std::endl;
+            Sudoku solved_sudoku = solve( sudoku );
+            solved_sudoku.show();
+        }
+        if ( true ) // Learn something (X-Wing)
+        {
+            std::vector< std::string > sudoku_string;
+            sudoku_string.push_back( "600090007" );
+            sudoku_string.push_back( "040007100" );
+            sudoku_string.push_back( "002800050" );
+            sudoku_string.push_back( "800000090" );
+            sudoku_string.push_back( "000070000" );
+            sudoku_string.push_back( "030000008" );
+            sudoku_string.push_back( "050002300" );
+            sudoku_string.push_back( "004500020" );
+            sudoku_string.push_back( "900030004" );
+            Sudoku sudoku( sudoku_string );
+            std::cout << "###############################################" << std::endl;
+            Sudoku solved_sudoku = solve( sudoku );
+            solved_sudoku.show();
+        }
+        if ( true ) // AI Escargot 6313 guesses, stack pointer = 1
+        {
+            std::vector< std::string > sudoku_string;
+            sudoku_string.push_back( "100007090" );
+            sudoku_string.push_back( "030020008" );
+            sudoku_string.push_back( "009600500" );
+            sudoku_string.push_back( "005300900" );
+            sudoku_string.push_back( "010080002" );
+            sudoku_string.push_back( "600004000" );
+            sudoku_string.push_back( "300000010" );
+            sudoku_string.push_back( "040000007" );
+            sudoku_string.push_back( "007000300" );
+            Sudoku sudoku( sudoku_string );
+            std::cout << "###############################################" << std::endl;
+            Sudoku solved_sudoku = solve( sudoku );
+            solved_sudoku.show();
+        }
+    MACRO_END_GAME
 
     try // Take all disordered atoms that have been modelled as large ADPs and change them into a split-atom model.
     {
@@ -1715,61 +1912,6 @@ int main( int argc, char** argv )
         // Stores results as .cif
         AnalyseTrajectory analyse_trajectory( file_list, 6, 12, 6, space_group );
   //      analyse_trajectory.save_centres_of_mass();
-    MACRO_END_GAME
-
-    try // Sudoku.
-    {
-        if ( false ) // Learn something (Empty Rectangle)
-        {
-            std::vector< std::string > sudoku_string;
-            sudoku_string.push_back( "800006305" );
-            sudoku_string.push_back( "040000070" );
-            sudoku_string.push_back( "000000000" );
-            sudoku_string.push_back( "010038704" );
-            sudoku_string.push_back( "000104000" );
-            sudoku_string.push_back( "300070290" );
-            sudoku_string.push_back( "000003000" );
-            sudoku_string.push_back( "020000040" );
-            sudoku_string.push_back( "506800002" );
-            Sudoku sudoku( sudoku_string );
-            std::cout << "###############################################" << std::endl;
-            Sudoku solved_sudoku = solve( sudoku );
-            solved_sudoku.show();
-        }
-        if ( false ) // Learn something (X-Wing)
-        {
-            std::vector< std::string > sudoku_string;
-            sudoku_string.push_back( "600090007" );
-            sudoku_string.push_back( "040007100" );
-            sudoku_string.push_back( "002800050" );
-            sudoku_string.push_back( "800000090" );
-            sudoku_string.push_back( "000070000" );
-            sudoku_string.push_back( "030000008" );
-            sudoku_string.push_back( "050002300" );
-            sudoku_string.push_back( "004500020" );
-            sudoku_string.push_back( "900030004" );
-            Sudoku sudoku( sudoku_string );
-            std::cout << "###############################################" << std::endl;
-            Sudoku solved_sudoku = solve( sudoku );
-            solved_sudoku.show();
-        }
-        if ( false ) // AI Escargot 6313 guesses, stack pointer = 1
-        {
-            std::vector< std::string > sudoku_string;
-            sudoku_string.push_back( "100007090" );
-            sudoku_string.push_back( "030020008" );
-            sudoku_string.push_back( "009600500" );
-            sudoku_string.push_back( "005300900" );
-            sudoku_string.push_back( "010080002" );
-            sudoku_string.push_back( "600004000" );
-            sudoku_string.push_back( "300000010" );
-            sudoku_string.push_back( "040000007" );
-            sudoku_string.push_back( "007000300" );
-            Sudoku sudoku( sudoku_string );
-            std::cout << "###############################################" << std::endl;
-            Sudoku solved_sudoku = solve( sudoku );
-            solved_sudoku.show();
-        }
     MACRO_END_GAME
 
     try // Primitive to centred.
