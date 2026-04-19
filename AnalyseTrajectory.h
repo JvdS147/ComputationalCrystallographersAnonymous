@@ -32,6 +32,7 @@ class AnisotropicDisplacementParameters;
 class Element;
 
 #include "CrystalLattice.h"
+#include "DriftCorrection.h"
 #include "FileList.h"
 #include "RunningAverageAndESD.h"
 #include "SpaceGroup.h"
@@ -68,15 +69,24 @@ public:
                                 const size_t w = 1,
                                 const SpaceGroup & space_group = SpaceGroup() );
 
-    enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR };
 
-//    void set_u_v_w( const size_t u, const size_t v, const size_t w ) { u_ = u; v_ = v; w_ = w; }
+    size_t u() const { return u_; }
+    size_t v() const { return v_; }
+    size_t w() const { return w_; }
 
-//    void set_space_group( const SpaceGroup & space_group ) { space_group_ = space_group; }
+    void set_u_v_w( const size_t u, const size_t v, const size_t w ) { u_ = u; v_ = v; w_ = w; }
 
-//    void set_drift_correction( const DriftCorrection drift_correction ) { drift_correction_ = drift_correction; }
+    void set_space_group( const SpaceGroup & space_group ) { space_group_ = space_group; }
+
+    void set_drift_correction( const DriftCorrection drift_correction ) { drift_correction_ = drift_correction; }
     
-//    void set_drift_correction_vector( const Vector3D & drift_correction_vector ) { drift_correction_vector_ = drift_correction_vector; }
+    void set_drift_correction_vector( const Vector3D & drift_correction_vector ) { drift_correction_vector_ = drift_correction_vector; }
+
+    void set_write_lean( const bool write_lean ) { write_lean_ = write_lean; }
+    void set_write_average( const bool write_average ) { write_average_ = write_average; }
+    void set_write_average_noH( const bool write_average_noH ) { write_average_noH_ = write_average_noH; }
+    void set_write_average_ESDs( const bool write_average_ESDs ) { write_average_ESDs_ = write_average_ESDs; }
+    void set_write_sum( const bool write_sum ) { write_sum_ = write_sum; }
 
     // Define a unit-cell transformation, atomic coordinates are also transformed
 //    void set_transformation( const Matrix3D & transformation ) { transformation_ = transformation; apply_transformation_ = true; }
@@ -87,6 +97,9 @@ public:
     CrystalLattice average_crystal_lattice() const;
 
     std::vector< Vector3D > centres_of_mass() const { return centres_of_mass_; }
+
+    void analyse();
+
 
 //  ADPs / ESDs / averages
 
@@ -114,11 +127,18 @@ private:
     RunningAverageAndESD<double> average_volume_;
     std::vector< Vector3D > centres_of_mass_; // Monitors the drift.
 
-    void analyse();
     void write_average( const std::vector< Element > & elements,
                         const std::vector< RunningAverageAndESD< Vector3D > > & average_positions,
                         const std::vector< AnisotropicDisplacementParameters > & all_ADPs,
                         const bool include_hydrogen );
+
+    void write_average_ESDs( const std::vector< Element > & elements,
+                             const std::vector< RunningAverageAndESD< Vector3D > > & average_positions,
+                             const std::vector< AnisotropicDisplacementParameters > & all_ADPs );
+
+    void write_sum( const std::vector< Element > & elements,
+                    const std::vector< std::vector< Vector3D > > & fractional_positions_trajectory );
+
 };
 
 #endif // ANALYSETRAJECTORY_H

@@ -35,6 +35,7 @@ class Mapping;
 #include "Atom.h"
 #include "ConnectivityTable.h"
 #include "CrystalLattice.h"
+#include "DriftCorrection.h"
 #include "MoleculeInCrystal.h"
 #include "SpaceGroup.h"
 
@@ -246,18 +247,11 @@ public:
     // the original unit cell, space_group is the space group of the original unit cell.
     void collapse_supercell( const size_t u, const size_t v, const size_t w, const SpaceGroup & space_group );
 
-    // The current space group should be P1. lattice is the lattice of the original unit cell,
-    // from which the dimensions of the supercell are calculated.
-    // space_group is the space group of the original unit cell.
-    void collapse_supercell( const CrystalLattice & crystal_lattice, const SpaceGroup & space_group );
 
     // The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
     // the original unit cell.
     void collapse_supercell( const size_t u, const size_t v, const size_t w );
 
-    // The current space group should be P1. lattice is the lattice of the original unit cell,
-    // from which the dimensions of the supercell are calculated.
-    void collapse_supercell( const CrystalLattice & crystal_lattice );
 
 // @@ natoms is currently not used but is used to disambiguate the overload...
 
@@ -283,7 +277,7 @@ public:
     void collapse_supercell( const size_t u,
                              const size_t v,
                              const size_t w,
-                             const int drift_correction,
+                             const DriftCorrection drift_correction,
                              const Vector3D & target_centre,
                              Vector3D & actual_centre,
                              std::vector< std::vector< Vector3D > > & positions );

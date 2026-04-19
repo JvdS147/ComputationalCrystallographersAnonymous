@@ -176,6 +176,17 @@ SpaceGroup SpaceGroup::from_generators( const std::vector< SymmetryOperator > & 
 
 // ********************************************************************************
 
+SpaceGroup SpaceGroup::Pc()
+{
+    std::vector< SymmetryOperator > symmetry_operators;
+    symmetry_operators.push_back( SymmetryOperator( std::string( "x,y,z" ) ) );
+    symmetry_operators.push_back( SymmetryOperator( std::string( "x,-y,1/2+z" ) ) );
+    SpaceGroup result( symmetry_operators, "Pc" );
+    return result;
+}
+
+// ********************************************************************************
+
 SpaceGroup SpaceGroup::P21c()
 {
     std::vector< SymmetryOperator > symmetry_operators;
@@ -196,6 +207,19 @@ SpaceGroup SpaceGroup::C2c()
     SpaceGroup result( symmetry_operators, "C2/c" );
     result.add_centring( Centring( "C" ) );
     result.add_inversion_at_origin();
+    return result;
+}
+
+// ********************************************************************************
+
+SpaceGroup SpaceGroup::P212121()
+{
+    std::vector< SymmetryOperator > symmetry_operators;
+    symmetry_operators.push_back( SymmetryOperator( std::string( "x,y,z" ) ) );
+    symmetry_operators.push_back( SymmetryOperator( std::string( "1/2+x,1/2-y,-z" ) ) );
+    symmetry_operators.push_back( SymmetryOperator( std::string( "-x,1/2+y,1/2-z" ) ) );
+    symmetry_operators.push_back( SymmetryOperator( std::string( "1/2-x,-y,1/2+z" ) ) );
+    SpaceGroup result( symmetry_operators, "P212121" );
     return result;
 }
 
@@ -272,20 +296,6 @@ Vector3D SpaceGroup::translation_of_inversion() const
 
 // ********************************************************************************
 
-// i = 0, 1, 2 for x, y, z.
-// I think that the diagonal in some cubic space groups can be a floating axis, so this
-// will not always work.
-bool SpaceGroup::is_floating_axis( const size_t i ) const
-{
-    if ( has_inversion_ )
-        return false;
-    Matrix3D sum;
-    for ( size_t k( 1 ); k != representative_symmetry_operators_.size(); ++k )
-        sum += representative_symmetry_operators_[ k ].rotation();
-    return ( ! nearly_zero( sum.value( i, i ) ) );
-}
-
-// ********************************************************************************
 
 // All elements of the rotation matrix of a standard symmetry operator are -1, 0 or 1.
 // All elements of the translation vector are 0, 1/6, 1/4, 1/3, 1/2, 2/3, 3/4 or 5/6.
@@ -624,6 +634,15 @@ void SpaceGroup::decompose()
         std::cout << "SpaceGroup::decompose(): Warning: number of symmetry operators not consistent."<< std::endl;
         std::cout << "SpaceGroup::decompose(): Warning: you have now constructed an invalid object!"<< std::endl;
  //       throw std::runtime_error( "SpaceGroup::decompose(): Error: number of symmetry operators not consistent." );
+    }
+    is_floating_axis_ = std::vector< bool >( 3, false );
+    if ( ! has_inversion_ )
+    {
+        Matrix3D sum;
+        for ( size_t i( 1 ); i != representative_symmetry_operators_.size(); ++i )
+            sum += representative_symmetry_operators_[ i ].rotation();
+        for ( size_t i( 0 ); i != is_floating_axis_.size(); ++i )
+            is_floating_axis_[i] = ( ! nearly_zero( sum.value( i, i ) ) );
     }
 }
 

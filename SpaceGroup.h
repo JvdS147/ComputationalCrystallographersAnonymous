@@ -67,8 +67,10 @@ public:
     // We cannot make this a constructor because its arguments cannot be distinguished from the constructor taking a list of symmetry operators.
     static SpaceGroup from_generators( const std::vector< SymmetryOperator > & generators, const std::string & name = "" );
 
+    static SpaceGroup Pc();
     static SpaceGroup P21c();
     static SpaceGroup C2c();
+    static SpaceGroup P212121();
 
     // Allows quick building of space groups
     void add_inversion_at_origin();
@@ -98,7 +100,7 @@ public:
     // i = 0, 1, 2 for x, y, z.
     // I think that the diagonal in some cubic space groups can be a floating axis, so this
     // will not always work.
-    bool is_floating_axis( const size_t i ) const;
+    bool is_floating_axis( const size_t i ) const { return is_floating_axis_[i]; }
 
     // All elements of the rotation matrix of a standard symmetry operator are -1, 0 or 1.
     // All elements of the translation vector are 0, 1/6, 1/4, 1/3, 1/2, 2/3, 3/4 or 5/6.
@@ -141,6 +143,7 @@ private:
     bool has_inversion_at_origin_;
     Vector3D translation_of_inversion_;
     std::string name_;
+    std::vector< bool > is_floating_axis_;
 
     void decompose();
 

@@ -972,19 +972,6 @@ void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const
 
 // ********************************************************************************
 
-// The current space group should be P1. lattice is the lattice of the original unit cell,
-// from which the dimensions of the supercell are calculated.
-// space_group is the space group of the original unit cell.
-void CrystalStructure::collapse_supercell( const CrystalLattice & crystal_lattice, const SpaceGroup & space_group )
-{
-    size_t u = round_to_int( crystal_lattice_.a() / crystal_lattice.a() );
-    size_t v = round_to_int( crystal_lattice_.b() / crystal_lattice.b() );
-    size_t w = round_to_int( crystal_lattice_.c() / crystal_lattice.c() );
-    collapse_supercell( u, v, w, space_group );
-}
-
-// ********************************************************************************
-
 // The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
 // the original unit cell.
 void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const size_t w )
@@ -1041,17 +1028,6 @@ void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const
     atoms_ = new_atoms;
 }
 
-// ********************************************************************************
-
-// The current space group should be P1. lattice is the lattice of the original unit cell,
-// from which the dimensions of the supercell are calculated.
-void CrystalStructure::collapse_supercell( const CrystalLattice & crystal_lattice )
-{
-    size_t u = round_to_int( crystal_lattice_.a() / crystal_lattice.a() );
-    size_t v = round_to_int( crystal_lattice_.b() / crystal_lattice.b() );
-    size_t w = round_to_int( crystal_lattice_.c() / crystal_lattice.c() );
-    collapse_supercell( u, v, w );
-}
 
 // ********************************************************************************
 
@@ -1109,7 +1085,7 @@ void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const
 void CrystalStructure::collapse_supercell( const size_t u,
                                            const size_t v,
                                            const size_t w,
-                                           const int drift_correction,
+                                           const DriftCorrection drift_correction,
                                            const Vector3D & target_centre,
                                            Vector3D & actual_centre,
                                            std::vector< std::vector< Vector3D > > & positions )
@@ -1122,11 +1098,25 @@ void CrystalStructure::collapse_supercell( const size_t u,
     for ( size_t i( 0 ); i != atoms_.size(); ++i )
         actual_centre += atoms_[ i ].position();
     actual_centre /= atoms_.size();
-    if ( drift_correction != 0 )
+// enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR, FLOATING_AXES };
+    if ( drift_correction == USE_FIRST_FRAME )
+        throw std::runtime_error( "CrystalStructure::collapse_supercell(): error: cannot be called with drift_correction == USE_FIRST_FRAME." );
+    Vector3D com_correction = -actual_centre + target_centre;
+    // If drift_correction == FLOATING_AXES, zero all the directions not corresponding to a floating axis.
+    if ( drift_correction == FLOATING_AXES )
+    {
+        for ( size_t i( 0 ); i != 3; ++i )
+        {
+            if ( ! space_group_.is_floating_axis( i ) )
+                com_correction.set_value( i, 0.0 );
+        }
+    }
+    if ( ( drift_correction == USE_VECTOR ) ||
+         ( drift_correction == FLOATING_AXES ) )
     {
         for ( size_t i( 0 ); i != atoms_.size(); ++i )
         {
-            Vector3D position = atoms_[ i ].position() - actual_centre + target_centre;
+            Vector3D position = atoms_[ i ].position() + com_correction;
             atoms_[ i ].set_position( position );
         }
     }

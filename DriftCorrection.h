@@ -1,5 +1,5 @@
-#ifndef STRINGCONVERSIONS_H
-#define STRINGCONVERSIONS_H
+#ifndef DRIFTCORRECTION_H
+#define DRIFTCORRECTION_H
 
 /* *********************************************
 Copyright (c) 2013-2026, Cornelis Jan (Jacco) van de Streek
@@ -28,32 +28,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
-// This file exists to decouple low-lying classes like Angle and Matrix3D from conversions to and from a std::string.
+// FLOATING_AXES only makes sense if the space-group symmetry was imposed during the MD simulation, which does not make much sense.
+// Currently the algorithm to detect floating axes does not work for the diagonal in cubic space groups, I do not know about trigonal and rhombohedral.
+// So in practice the algorithm to detect floating axes is only guaranteed to work for triclinic, monoclinic and orthorhombic.
+// Could be made more general.
+enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR, FLOATING_AXES };
 
-class Angle;
-class Matrix3D;
-class MillerIndices;
-class Vector3D;
-
-#include <string>
-
-Angle Angle_from_string( const std::string & input );
-
-// "[[-2,0,-1],[0,0,-1],[0,-1,0]]" or "I".
-Matrix3D Matrix3D_from_string( std::string input );
-
-MillerIndices MillerIndices_from_string( std::string input );
-
-// "[0,0.5,0]" or "O".
-Vector3D Vector3D_from_string( std::string input );
-
-//Angle Angle_from_string( const std::string & input );
-//Angle Angle_from_string( const std::string & input );
-
-std::string to_string( const Angle input );
-std::string to_string( const Matrix3D & input );
-std::string to_string( const MillerIndices & input );
-std::string to_string( const Vector3D & input );
-
-#endif // STRINGCONVERSIONS_H
+#endif // DRIFTCORRECTION_H
 

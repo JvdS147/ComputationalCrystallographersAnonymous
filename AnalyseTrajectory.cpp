@@ -50,11 +50,10 @@ space_group_(space_group),
 write_lean_(false),
 write_average_(true),
 write_average_noH_(false),
-write_average_ESDs_(false),
+write_average_ESDs_(true),
 write_sum_(false),
 drift_correction_(USE_FIRST_FRAME)
 {
-    analyse();
 }
 
 // ********************************************************************************
@@ -68,6 +67,13 @@ void AnalyseTrajectory::analyse()
     std::vector< Element > elements;
     std::vector< RunningAverageAndESD< Vector3D > > average_positions; // Fractional coordinates.
     std::vector< std::vector< Vector3D > > fractional_positions_trajectory;
+    if ( drift_correction_ == FLOATING_AXES )
+    {
+        if ( ( ! space_group_.is_floating_axis( 0 ) ) &&
+             ( ! space_group_.is_floating_axis( 1 ) ) &&
+             ( ! space_group_.is_floating_axis( 2 ) ) )
+            drift_correction_ = NONE;
+    }
     // Read the first cif file and initialise everything.
     {
     CrystalStructure crystal_structure;
@@ -86,14 +92,16 @@ void AnalyseTrajectory::analyse()
     average_volume_.add_value( crystal_lattice.volume() / ( u_ * v_ * w_ ) );
     std::vector< std::vector< Vector3D > > fractional_positions_frame;
     Vector3D actual_centre;
+//     enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR, FLOATING_AXES };
     // Returns a std::vector of atomic coordinates for each atom in the asymmetric unit.
     if ( ( drift_correction_ == NONE ) ||
-         ( drift_correction_ == USE_FIRST_FRAME ) )
+         ( drift_correction_ == USE_FIRST_FRAME ) ||
+         ( drift_correction_ == FLOATING_AXES ) )
     {
-        crystal_structure.collapse_supercell( u_, v_, w_, 0, drift_correction_vector_, actual_centre, fractional_positions_frame );
+        crystal_structure.collapse_supercell( u_, v_, w_, NONE, drift_correction_vector_, actual_centre, fractional_positions_frame );
         drift_correction_vector_ = actual_centre;
     }
-    else
+    else // USE_VECTOR
         crystal_structure.collapse_supercell( u_, v_, w_, drift_correction_, drift_correction_vector_, actual_centre, fractional_positions_frame );
     centres_of_mass_.push_back( actual_centre );
     natoms_ = fractional_positions_frame.size();
@@ -167,113 +175,9 @@ void AnalyseTrajectory::analyse()
     if ( write_average_noH_ )
         write_average( elements, average_positions, all_ADPs, false );
     if ( write_average_ESDs_ )
-    {
-        TextFileWriter text_file_writer( FileName( file_list_.base_directory(), "average_ESDs_adps", "cif" ) );
-        text_file_writer.write_line( "data_avg_ESDs" );
-        text_file_writer.write_line( "_symmetry_space_group_name_H-M  '" + space_group_.name() + "'" );
-    //    text_file_writer.write_line( "_symmetry_Int_Tables_number     1" );
-    //    text_file_writer.write_line( "_symmetry_cell_setting          triclinic" );
-        text_file_writer.write_line( "_cell_length_a    " + crystallographic_style( average_a_.average(), average_a_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_length_b    " + crystallographic_style( average_b_.average(), average_b_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_length_c    " + crystallographic_style( average_c_.average(), average_c_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_angle_alpha " + crystallographic_style( average_alpha_.average().value_in_degrees(), average_alpha_.estimated_standard_deviation().value_in_degrees() ) );
-        text_file_writer.write_line( "_cell_angle_beta  " + crystallographic_style( average_beta_.average().value_in_degrees() , average_beta_.estimated_standard_deviation().value_in_degrees()  ) );
-        text_file_writer.write_line( "_cell_angle_gamma " + crystallographic_style( average_gamma_.average().value_in_degrees(), average_gamma_.estimated_standard_deviation().value_in_degrees() ) );
-        text_file_writer.write_line( "_cell_volume      " + crystallographic_style( average_volume_.average(), average_volume_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "loop_" );
-        text_file_writer.write_line( "_symmetry_equiv_pos_site_id" );
-        text_file_writer.write_line( "_symmetry_equiv_pos_as_xyz" );
-        for ( size_t i( 0 ); i != space_group_.nsymmetry_operators(); ++i )
-            text_file_writer.write_line( size_t2string( i+1 ) + " " + space_group_.symmetry_operator( i ).to_string() );
-        text_file_writer.write_line( "loop_" );
-        text_file_writer.write_line( "_atom_site_label" ); // Needed for Materials Studio.
-        text_file_writer.write_line( "_atom_site_type_symbol" );
-        text_file_writer.write_line( "_atom_site_fract_x" );
-        text_file_writer.write_line( "_atom_site_fract_y" );
-        text_file_writer.write_line( "_atom_site_fract_z" );
-        size_t len( 2 );
-        size_t current_size = 99;
-        while ( natoms_ >= current_size )
-        {
-            ++len;
-            current_size = 10 * current_size + 9;
-        }
-        for ( size_t i( 0 ); i != natoms_; ++i )
-        {
-            // This is just too weird, need std::vector< DoubleWithESD > for this.
-            text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
-                                         elements[i].symbol() + " " +
-                                         crystallographic_style( adjust_for_translations( average_positions[ i ].average().x() ), average_positions[ i ].estimated_standard_deviation().x() ) + " " +
-                                         crystallographic_style( adjust_for_translations( average_positions[ i ].average().y() ), average_positions[ i ].estimated_standard_deviation().y() ) + " " +
-                                         crystallographic_style( adjust_for_translations( average_positions[ i ].average().z() ), average_positions[ i ].estimated_standard_deviation().z() ) );
-        }
-        text_file_writer.write_line( "loop_" );
-        text_file_writer.write_line( "_atom_site_aniso_label" );
-        text_file_writer.write_line( "_atom_site_aniso_U_11" );
-        text_file_writer.write_line( "_atom_site_aniso_U_22" );
-        text_file_writer.write_line( "_atom_site_aniso_U_33" );
-        text_file_writer.write_line( "_atom_site_aniso_U_12" );
-        text_file_writer.write_line( "_atom_site_aniso_U_13" );
-        text_file_writer.write_line( "_atom_site_aniso_U_23" );
-        for ( size_t i( 0 ); i != natoms_; ++i )
-        {
-            SymmetricMatrix3D Ucif = all_ADPs[i].U_cif( crystal_lattice_average_ );
-            // This can go wrong if the ADP is very small, it may be printed like "1E-14" which will not be recognised in the cif.
-            text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
-                                         double2string( Ucif.value( 0, 0 ), 6 ) + " " +
-                                         double2string( Ucif.value( 1, 1 ), 6 ) + " " +
-                                         double2string( Ucif.value( 2, 2 ), 6 ) + " " +
-                                         double2string( Ucif.value( 0, 1 ), 6 ) + " " +
-                                         double2string( Ucif.value( 0, 2 ), 6 ) + " " +
-                                         double2string( Ucif.value( 1, 2 ), 6 ) );
-        }
-        text_file_writer.write_line();
-        text_file_writer.write_line( "#END" );
-    }
+        write_average_ESDs( elements, average_positions, all_ADPs );
     if ( write_sum_ )
-    {
-        TextFileWriter text_file_writer( FileName( file_list_.base_directory(), "average_sum", "cif" ) );
-        text_file_writer.write_line( "data_sum" );
-        text_file_writer.write_line( "_symmetry_space_group_name_H-M  '" + space_group_.name() + "'" );
-    //    text_file_writer.write_line( "_symmetry_Int_Tables_number     1" );
-    //    text_file_writer.write_line( "_symmetry_cell_setting          triclinic" );
-        text_file_writer.write_line( "_cell_length_a    " + crystallographic_style( average_a_.average(), average_a_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_length_b    " + crystallographic_style( average_b_.average(), average_b_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_length_c    " + crystallographic_style( average_c_.average(), average_c_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "_cell_angle_alpha " + crystallographic_style( average_alpha_.average().value_in_degrees(), average_alpha_.estimated_standard_deviation().value_in_degrees() ) );
-        text_file_writer.write_line( "_cell_angle_beta  " + crystallographic_style( average_beta_.average().value_in_degrees() , average_beta_.estimated_standard_deviation().value_in_degrees()  ) );
-        text_file_writer.write_line( "_cell_angle_gamma " + crystallographic_style( average_gamma_.average().value_in_degrees(), average_gamma_.estimated_standard_deviation().value_in_degrees() ) );
-        text_file_writer.write_line( "_cell_volume      " + crystallographic_style( average_volume_.average(), average_volume_.estimated_standard_deviation() ) );
-        text_file_writer.write_line( "loop_" );
-        text_file_writer.write_line( "_symmetry_equiv_pos_site_id" );
-        text_file_writer.write_line( "_symmetry_equiv_pos_as_xyz" );
-        for ( size_t i( 0 ); i != space_group_.nsymmetry_operators(); ++i )
-            text_file_writer.write_line( size_t2string( i+1 ) + " " + space_group_.symmetry_operator( i ).to_string() );
-        text_file_writer.write_line( "loop_" );
-        text_file_writer.write_line( "_atom_site_label" ); // Needed for Materials Studio
-        text_file_writer.write_line( "_atom_site_type_symbol" );
-        text_file_writer.write_line( "_atom_site_fract_x" );
-        text_file_writer.write_line( "_atom_site_fract_y" );
-        text_file_writer.write_line( "_atom_site_fract_z" );
-        size_t len( 2 );
-        size_t current_size = 99;
-        while ( natoms_ >= current_size )
-        {
-            ++len;
-            current_size = 10 * current_size + 9;
-        }
-        for ( size_t i( 0 ); i != natoms_; ++i )
-        {
-            for ( size_t j( 0 ); j != fractional_positions_trajectory[i].size(); ++j )
-                text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
-                                             elements[i].symbol() + " " +
-                                             double2string_pad_plus( fractional_positions_trajectory[i][j].x(), 5, ' ' ) + " " +
-                                             double2string_pad_plus( fractional_positions_trajectory[i][j].y(), 5, ' ' ) + " " +
-                                             double2string_pad_plus( fractional_positions_trajectory[i][j].z(), 5, ' ' ) );
-        }
-        text_file_writer.write_line();
-        text_file_writer.write_line( "#END" );
-    }
+        write_sum( elements, fractional_positions_trajectory );
 }
 
 // ********************************************************************************
@@ -347,6 +251,132 @@ void AnalyseTrajectory::write_average( const std::vector< Element > & elements,
     }
     text_file_writer.write_line();
     text_file_writer.write_line( "#END" );    
+}
+
+// ********************************************************************************
+
+void AnalyseTrajectory::write_average_ESDs( const std::vector< Element > & elements,
+                                            const std::vector< RunningAverageAndESD< Vector3D > > & average_positions,
+                                            const std::vector< AnisotropicDisplacementParameters > & all_ADPs )
+{
+    TextFileWriter text_file_writer( FileName( file_list_.base_directory(), "average_ESDs_adps", "cif" ) );
+    text_file_writer.write_line( "data_avg_ESDs" );
+    text_file_writer.write_line( "_symmetry_space_group_name_H-M  '" + space_group_.name() + "'" );
+//    text_file_writer.write_line( "_symmetry_Int_Tables_number     1" );
+//    text_file_writer.write_line( "_symmetry_cell_setting          triclinic" );
+    text_file_writer.write_line( "_cell_length_a    " + crystallographic_style( average_a_.average(), average_a_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "_cell_length_b    " + crystallographic_style( average_b_.average(), average_b_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "_cell_length_c    " + crystallographic_style( average_c_.average(), average_c_.estimated_standard_deviation() ) );
+    if ( average_alpha_.estimated_standard_deviation().nearly_zero() )
+        text_file_writer.write_line( "_cell_angle_alpha " + double2string( average_alpha_.average().value_in_degrees(), 6 ) );
+    else
+        text_file_writer.write_line( "_cell_angle_alpha " + crystallographic_style( average_alpha_.average().value_in_degrees(), average_alpha_.estimated_standard_deviation().value_in_degrees() ) );
+    if ( average_beta_.estimated_standard_deviation().nearly_zero() )
+        text_file_writer.write_line( "_cell_angle_beta " + double2string( average_beta_.average().value_in_degrees(), 6 ) );
+    else
+        text_file_writer.write_line( "_cell_angle_beta " + crystallographic_style( average_beta_.average().value_in_degrees(), average_beta_.estimated_standard_deviation().value_in_degrees() ) );
+    if ( average_gamma_.estimated_standard_deviation().nearly_zero() )
+        text_file_writer.write_line( "_cell_angle_gamma " + double2string( average_gamma_.average().value_in_degrees(), 6 ) );
+    else
+        text_file_writer.write_line( "_cell_angle_gamma " + crystallographic_style( average_gamma_.average().value_in_degrees(), average_gamma_.estimated_standard_deviation().value_in_degrees() ) );
+    text_file_writer.write_line( "_cell_volume      " + crystallographic_style( average_volume_.average(), average_volume_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "loop_" );
+    text_file_writer.write_line( "_symmetry_equiv_pos_site_id" );
+    text_file_writer.write_line( "_symmetry_equiv_pos_as_xyz" );
+    for ( size_t i( 0 ); i != space_group_.nsymmetry_operators(); ++i )
+        text_file_writer.write_line( size_t2string( i+1 ) + " " + space_group_.symmetry_operator( i ).to_string() );
+    text_file_writer.write_line( "loop_" );
+    text_file_writer.write_line( "_atom_site_label" ); // Needed for Materials Studio.
+    text_file_writer.write_line( "_atom_site_type_symbol" );
+    text_file_writer.write_line( "_atom_site_fract_x" );
+    text_file_writer.write_line( "_atom_site_fract_y" );
+    text_file_writer.write_line( "_atom_site_fract_z" );
+    size_t len( 2 );
+    size_t current_size = 99;
+    while ( natoms_ >= current_size )
+    {
+        ++len;
+        current_size = 10 * current_size + 9;
+    }
+    for ( size_t i( 0 ); i != natoms_; ++i )
+    {
+        // This is just too weird, need std::vector< DoubleWithESD > for this.
+        text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
+                                     elements[i].symbol() + " " +
+                                     crystallographic_style( adjust_for_translations( average_positions[ i ].average().x() ), average_positions[ i ].estimated_standard_deviation().x() ) + " " +
+                                     crystallographic_style( adjust_for_translations( average_positions[ i ].average().y() ), average_positions[ i ].estimated_standard_deviation().y() ) + " " +
+                                     crystallographic_style( adjust_for_translations( average_positions[ i ].average().z() ), average_positions[ i ].estimated_standard_deviation().z() ) );
+    }
+    text_file_writer.write_line( "loop_" );
+    text_file_writer.write_line( "_atom_site_aniso_label" );
+    text_file_writer.write_line( "_atom_site_aniso_U_11" );
+    text_file_writer.write_line( "_atom_site_aniso_U_22" );
+    text_file_writer.write_line( "_atom_site_aniso_U_33" );
+    text_file_writer.write_line( "_atom_site_aniso_U_12" );
+    text_file_writer.write_line( "_atom_site_aniso_U_13" );
+    text_file_writer.write_line( "_atom_site_aniso_U_23" );
+    for ( size_t i( 0 ); i != natoms_; ++i )
+    {
+        SymmetricMatrix3D Ucif = all_ADPs[i].U_cif( crystal_lattice_average_ );
+        // This can go wrong if the ADP is very small, it may be printed like "1E-14" which will not be recognised in the cif.
+        text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
+                                     double2string( Ucif.value( 0, 0 ), 6 ) + " " +
+                                     double2string( Ucif.value( 1, 1 ), 6 ) + " " +
+                                     double2string( Ucif.value( 2, 2 ), 6 ) + " " +
+                                     double2string( Ucif.value( 0, 1 ), 6 ) + " " +
+                                     double2string( Ucif.value( 0, 2 ), 6 ) + " " +
+                                     double2string( Ucif.value( 1, 2 ), 6 ) );
+    }
+    text_file_writer.write_line();
+    text_file_writer.write_line( "#END" );
+}
+
+// ********************************************************************************
+
+void AnalyseTrajectory::write_sum( const std::vector< Element > & elements,
+                                   const std::vector< std::vector< Vector3D > > & fractional_positions_trajectory )
+{
+    TextFileWriter text_file_writer( FileName( file_list_.base_directory(), "average_sum", "cif" ) );
+    text_file_writer.write_line( "data_sum" );
+    text_file_writer.write_line( "_symmetry_space_group_name_H-M  '" + space_group_.name() + "'" );
+//    text_file_writer.write_line( "_symmetry_Int_Tables_number     1" );
+//    text_file_writer.write_line( "_symmetry_cell_setting          triclinic" );
+    text_file_writer.write_line( "_cell_length_a    " + crystallographic_style( average_a_.average(), average_a_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "_cell_length_b    " + crystallographic_style( average_b_.average(), average_b_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "_cell_length_c    " + crystallographic_style( average_c_.average(), average_c_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "_cell_angle_alpha " + crystallographic_style( average_alpha_.average().value_in_degrees(), average_alpha_.estimated_standard_deviation().value_in_degrees() ) );
+    text_file_writer.write_line( "_cell_angle_beta  " + crystallographic_style( average_beta_.average().value_in_degrees() , average_beta_.estimated_standard_deviation().value_in_degrees()  ) );
+    text_file_writer.write_line( "_cell_angle_gamma " + crystallographic_style( average_gamma_.average().value_in_degrees(), average_gamma_.estimated_standard_deviation().value_in_degrees() ) );
+    text_file_writer.write_line( "_cell_volume      " + crystallographic_style( average_volume_.average(), average_volume_.estimated_standard_deviation() ) );
+    text_file_writer.write_line( "loop_" );
+    text_file_writer.write_line( "_symmetry_equiv_pos_site_id" );
+    text_file_writer.write_line( "_symmetry_equiv_pos_as_xyz" );
+    for ( size_t i( 0 ); i != space_group_.nsymmetry_operators(); ++i )
+        text_file_writer.write_line( size_t2string( i+1 ) + " " + space_group_.symmetry_operator( i ).to_string() );
+    text_file_writer.write_line( "loop_" );
+    text_file_writer.write_line( "_atom_site_label" ); // Needed for Materials Studio
+    text_file_writer.write_line( "_atom_site_type_symbol" );
+    text_file_writer.write_line( "_atom_site_fract_x" );
+    text_file_writer.write_line( "_atom_site_fract_y" );
+    text_file_writer.write_line( "_atom_site_fract_z" );
+    size_t len( 2 );
+    size_t current_size = 99;
+    while ( natoms_ >= current_size )
+    {
+        ++len;
+        current_size = 10 * current_size + 9;
+    }
+    for ( size_t i( 0 ); i != natoms_; ++i )
+    {
+        for ( size_t j( 0 ); j != fractional_positions_trajectory[i].size(); ++j )
+            text_file_writer.write_line( elements[i].symbol() + size_t2string( i + 1, len, '0' ) + " " +
+                                         elements[i].symbol() + " " +
+                                         double2string_pad_plus( fractional_positions_trajectory[i][j].x(), 5, ' ' ) + " " +
+                                         double2string_pad_plus( fractional_positions_trajectory[i][j].y(), 5, ' ' ) + " " +
+                                         double2string_pad_plus( fractional_positions_trajectory[i][j].z(), 5, ' ' ) );
+    }
+    text_file_writer.write_line();
+    text_file_writer.write_line( "#END" );
 }
 
 // ********************************************************************************
