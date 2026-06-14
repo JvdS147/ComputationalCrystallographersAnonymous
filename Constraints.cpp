@@ -57,7 +57,7 @@ std::string constraint_coordinate( const double x )
     std::string result = "= ";
     // I have no idea if 1/24 is the correct value
     Fraction fraction = double2fraction( x, Fraction( 1, 24 ) );
-    // This should really be close to exact, because x has already been moved to be exactly on the special position
+    // This should really be close to exact, because x has already been moved to be exactly on the special position.
     if ( ! nearly_equal( fraction.to_double(), x ) )
         std::cout << "constraint_coordinate():Warning: conversion to fraction introduces large error." << std::endl;
     if ( ! fraction.is_pure_fraction() )
@@ -144,7 +144,7 @@ std::string write_constraints( const CrystalStructure & crystal_structure, const
         {
             std::cout << "Not yet implemented 1" << std::endl;
             std::cout << "point = " << point << std::endl;
-                std::cout << "exact_point = " << exact_point << std::endl;
+            std::cout << "exact_point = " << exact_point << std::endl;
             std::cout << point_group << std::endl;
             std::cout << matrix << std::endl;
         }
@@ -192,7 +192,7 @@ std::string write_constraints( const CrystalStructure & crystal_structure, const
             // This can be a three-fold axis on a diagonal.
             std::cout << "Not yet implemented 3" << std::endl;
             std::cout << "point = " << point << std::endl;
-                std::cout << "exact_point = " << exact_point << std::endl;
+            std::cout << "exact_point = " << exact_point << std::endl;
             std::cout << point_group << std::endl;
             std::cout << matrix << std::endl;
 

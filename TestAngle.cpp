@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Angle.h"
 
+//#include "BasicMathsFunctions.h"
 #include "TestSuite.h"
 
 #include <iostream>
@@ -59,6 +60,27 @@ void test_angle( TestSuite & test_suite )
         angle = ATAN2( y, x );
         test_suite.test_equality_double( angle.value_in_degrees(), 315.0, "Angle ATAN2() 4" );
     }
-    
+    {
+    Angle dummy_1 = Angle::from_degrees( 3.0 );
+    Angle dummy_2 = Angle::from_degrees( 3.0 );
+    Angle dummy_3 = Angle::from_degrees( 3.0 );
+    test_suite.test_equality( triquality( dummy_1, dummy_2, dummy_3 ), true, "triquality( Angle ) 01" );
+    }
+    {
+    Angle dummy_1 = Angle::from_degrees( 3.0 );
+    Angle dummy_2 = Angle::from_degrees( 3.0 );
+    Angle dummy_3 = Angle::from_degrees( 4.0 );
+    test_suite.test_equality( triquality( dummy_1, dummy_2, dummy_3 ), false, "triquality( Angle ) 02" );
+    }
+    {
+    Angle dummy_1 = Angle::from_degrees( 3.0 );
+    Angle dummy_2 = Angle::from_degrees( 4.0 );
+    Angle average_1 = average( dummy_1, dummy_2 );
+    test_suite.test_equality_double( average_1.value_in_degrees(), 3.5, "average( Angle ) 01" );
+    Angle dummy_3 = Angle::from_degrees( 5.0 );
+    average_1 = average( dummy_3, average_1, 2.0 );
+    test_suite.test_equality_double( average_1.value_in_degrees(), 4.0, "average( Angle ) 01" );
+    }
+
 }
 

@@ -1,3 +1,4 @@
+
 /* *********************************************
 Copyright (c) 2013-2026, Cornelis Jan (Jacco) van de Streek
 All rights reserved.
@@ -70,15 +71,18 @@ void sincos( Angle angle, double & sine, double & cosine )
 
 bool triquality( const Angle x1, const Angle x2, const Angle x3, const Angle tolerance )
 {
-    Angle average = ( x1 + x2 + x3 ) / 3.0;
-    if ( ! nearly_equal( x1, average, tolerance ) )
-        return false;
-    if ( ! nearly_equal( x2, average, tolerance ) )
-        return false;
-    if ( ! nearly_equal( x3, average, tolerance ) )
-        return false;
-    return true;
+    size_t nequalities( 0 );
+    if ( nearly_equal( x1, x2, tolerance ) )
+       ++nequalities;
+    if ( nearly_equal( x1, x3, tolerance ) )
+       ++nequalities;
+    if ( nearly_equal( x2, x3, tolerance ) )
+       ++nequalities;
+    if ( nequalities == 3 )
+       return true;
+    if ( nequalities == 2 )
+       std::cout << "triquality( Angle ): Warning: A=B and B=C but A!=C; returning false." << std::endl;
+    return false;
 }
-
 // ********************************************************************************
 

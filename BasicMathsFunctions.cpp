@@ -32,11 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ********************************************************************************
 
-double average( const double lhs, const double rhs, const double weight )
+bool nearly_integer( const double value, const double tolerance )
 {
-    if ( ! nearly_integer( weight ) )
-        std::cout << "average( double, double, double ): warning: weight is not an integer, is that intended?" << std::endl;
-    return ( lhs + weight * rhs ) / ( 1.0 + weight );
+    return nearly_equal( value, round_to_int( value ), tolerance );
 }
 
 // ********************************************************************************
@@ -60,27 +58,6 @@ size_t round_to_size_t( const double x )
     if ( x < -0.5 )
         throw std::runtime_error( "round_to_size_t(): value is negative." );
     return static_cast<size_t>( x + 0.5 );
-}
-
-// ********************************************************************************
-
-bool triquality( const double x1, const double x2, const double x3, const double tolerance )
-{
-    double average = ( x1 + x2 + x3 ) / 3.0;
-    if ( ! nearly_equal( x1, average, tolerance ) )
-        return false;
-    if ( ! nearly_equal( x2, average, tolerance ) )
-        return false;
-    if ( ! nearly_equal( x3, average, tolerance ) )
-        return false;
-    return true;
-}
-
-// ********************************************************************************
-
-bool nearly_integer( const double value, const double tolerance )
-{
-    return nearly_equal( value, round_to_int( value ), tolerance );
 }
 
 // ********************************************************************************

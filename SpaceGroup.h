@@ -48,7 +48,7 @@ class PointGroup;
 
   SpaceGroup space_group;
   space_group.add_inversion_at_origin(); // Space group is now P-1
-  
+
   It is guaranteed that the identity is the first symmetry operator.
 
 */
@@ -80,9 +80,17 @@ public:
 
     size_t nsymmetry_operators() const { return symmetry_operators_.size(); }
 
+    // It is guaranteed that the identity is the first symmetry operator.
     SymmetryOperator symmetry_operator( const size_t i ) const;
-    
+
+    // It is guaranteed that the identity is the first symmetry operator.
     std::vector< SymmetryOperator > symmetry_operators() const { return symmetry_operators_; }
+
+    size_t nrepresentative_symmetry_operators() const { return representative_symmetry_operators_.size(); }
+
+    SymmetryOperator representative_symmetry_operator( const size_t i ) const;
+
+    std::vector< SymmetryOperator > representative_symmetry_operators() const { return representative_symmetry_operators_; }
 
 // The following would avoid the unnecessary copying of symmetry operators as forced by the member function SymmetryOperator symmetry_operator( const size_t i ) const; .
 //    Vector3D apply_symmetry_operator( const size_t i, const Vector3D & vector ) const { return symmetry_operators_[i] * vector; }
@@ -125,6 +133,27 @@ public:
     // The point group augmented with the inversion.
     PointGroup Laue_class() const;
 
+/*
+There is no trigonal lattice system, and no trigonal crystal family.
+
++----------------+----------------+----------------+
+| Crystal family | Crystal system | Lattice system |
++----------------+----------------+----------------+
+|                |                |                |
+|                |                |  Rhombohedral  |
+|                |                |                |
+|                |    Trigonal    +----------------+
+|                |                |                |
+|   Hexagonal    |                |   Hexagonal    |
+|                |                |                |
+|                +----------------+----------------+
+|                |                |                |
+|                |   Hexagonal    |   Hexagonal    |
+|                |                |                |
++----------------+----------------+----------------+
+
+In principle the lattice system can be queried with CrystalLattice::lattice_system(), but it is merely deduced from the lattice parameters, not from the symmetry operators.
+*/
     std::string crystal_system() const;
 
     Centring centring() const { return centring_; }

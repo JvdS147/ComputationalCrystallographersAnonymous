@@ -287,15 +287,25 @@ SymmetryOperator SpaceGroup::symmetry_operator( const size_t i ) const
 
 // ********************************************************************************
 
-Vector3D SpaceGroup::translation_of_inversion() const
+SymmetryOperator SpaceGroup::representative_symmetry_operator( const size_t i ) const
 {
-    if ( ! has_inversion() )
-        throw std::runtime_error( "SpaceGroup::translation_of_inversion(): the space group has no inversion." );
-    return translation_of_inversion_;
+    if ( i < representative_symmetry_operators_.size() )
+        return representative_symmetry_operators_[i];
+    throw std::runtime_error( "SpaceGroup::representative_symmetry_operator( size_t ): index out of bounds." );
 }
 
 // ********************************************************************************
 
+Vector3D SpaceGroup::translation_of_inversion() const
+{
+    if ( ! has_inversion() )
+        throw std::runtime_error( "SpaceGroup::translation_of_inversion(): the space group has no inversion." );
+    if ( has_inversion_at_origin_ )
+        std::cout << "SpaceGroup::translation_of_inversion(): warning: the inversion is at the origin, there should be no need to call this function." << std::endl;
+    return translation_of_inversion_;
+}
+
+// ********************************************************************************
 
 // All elements of the rotation matrix of a standard symmetry operator are -1, 0 or 1.
 // All elements of the translation vector are 0, 1/6, 1/4, 1/3, 1/2, 2/3, 3/4 or 5/6.
@@ -550,7 +560,6 @@ void SpaceGroup::show() const
 // 3. Whatever is left such that multiplication with all of the above would generate the original set of space-group symmetry operators again.
 void SpaceGroup::decompose()
 {
-    representative_symmetry_operators_.clear();
     has_inversion_ = false;
     has_inversion_at_origin_ = false;
     std::vector< Vector3D > centring_vectors;
@@ -575,6 +584,8 @@ void SpaceGroup::decompose()
         else
             throw std::runtime_error( "SpaceGroup::decompose(): unexpected determinant = " + double2string( determinant ) );
     }
+    // Now determine the centring.
+    centring_ = Centring( centring_vectors );
     if ( has_inversion_ )
     {
         // Add the three translations x, y, and z (they are all [0,1>) and find the smallest value.
@@ -593,7 +604,13 @@ void SpaceGroup::decompose()
             has_inversion_at_origin_ = true;
     }
     // List of representative symmetry operators here.
-    for ( size_t i( 0 ); i != symmetry_operators_.size(); ++i )
+    representative_symmetry_operators_.clear();
+    size_t nexpected_representative_symmetry_operators = symmetry_operators_.size() / centring_.size();
+    if ( has_inversion_ )
+        nexpected_representative_symmetry_operators /= 2;
+    representative_symmetry_operators_.reserve( nexpected_representative_symmetry_operators );
+    representative_symmetry_operators_.push_back( symmetry_operators_[0] );
+    for ( size_t i( 1 ); i != symmetry_operators_.size(); ++i )
     {
         bool found( false );
         for ( size_t j( 0 ); j != representative_symmetry_operators_.size(); ++j )
@@ -623,13 +640,8 @@ void SpaceGroup::decompose()
         }
     }
     // @@ And now we must do the same for the centring vectors.
-    // Now determine the centring.
-    centring_ = Centring( centring_vectors );
     // Check for duplicates.
-    size_t nexpected_symmetry_operators = representative_symmetry_operators_.size() * centring_.size();
-    if ( has_inversion_ )
-        nexpected_symmetry_operators *= 2;
-    if ( nexpected_symmetry_operators != symmetry_operators_.size() )
+    if ( nexpected_representative_symmetry_operators != representative_symmetry_operators_.size() )
     {
         std::cout << "SpaceGroup::decompose(): Warning: number of symmetry operators not consistent."<< std::endl;
         std::cout << "SpaceGroup::decompose(): Warning: you have now constructed an invalid object!"<< std::endl;

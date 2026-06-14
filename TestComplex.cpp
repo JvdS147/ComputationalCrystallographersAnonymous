@@ -62,11 +62,32 @@ void test_Complex( TestSuite & test_suite )
     test_suite.test_equality( dummy.imaginary(), 7.0, "Complex() 06" );
     }
     {
-    test_one_complex( test_suite, exponential( Complex::i() * CONSTANT_PI ), Complex( -1.0 ), "Complex() 07" );
+    test_one_complex( test_suite, exponential( Complex::i() * CONSTANT_PI ), Complex( -1.0 ), "expontential( Complex )" );
     }
     {
     Complex dummy( 3.0, 7.0 );
-    test_one_complex( test_suite, square( dummy ), dummy * dummy, "Complex() 08" );
+    test_one_complex( test_suite, square( dummy ), dummy * dummy, "square( Complex )" );
+    }
+    {
+    Complex dummy_1( 3.0, 7.0 );
+    Complex dummy_2( 3.0, 7.0 );
+    Complex dummy_3( 3.0, 7.0 );
+    test_suite.test_equality( triquality( dummy_1, dummy_2, dummy_3 ), true, "triquality( Complex ) 01" );
+    }
+    {
+    Complex dummy_1( 3.0, 7.0 );
+    Complex dummy_2( 3.0, 7.0 );
+    Complex dummy_3( 4.0, 8.0 );
+    test_suite.test_equality( triquality( dummy_1, dummy_2, dummy_3 ), false, "triquality( Complex ) 02" );
+    }
+    {
+    Complex dummy_1( 3.0, 7.0 );
+    Complex dummy_2( 4.0, 8.0 );
+    Complex average_1 = average( dummy_1, dummy_2 );
+    test_one_complex( test_suite, average_1, Complex( 3.5, 7.5 ), "average( Complex ) 01" );
+    Complex dummy_3( 5.0, 9.0 );
+    average_1 = average( dummy_3, average_1, 2.0 );
+    test_one_complex( test_suite, average_1, Complex( 4.0, 8.0 ), "average( Complex ) 02" );
     }
 
 }
