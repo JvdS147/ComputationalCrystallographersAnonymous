@@ -29,8 +29,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include <cstddef> // For definition of size_t
+#include <iostream> // It is quite upsetting to have to include such a heavy cheader in such a basic class, but we do some very low-level testing that should really print warnings.
 
 const double TOLERANCE = 0.000001;
+
+// This has to be here because it uses functions defined in Utilities.h and in MathsFunctions.h
+// and otherwise there would be circular references. Well, that is why we started the current file.
+bool nearly_integer( const double value, const double tolerance = TOLERANCE );
 
 // To calculate the average of four values:
 // double average = average( value_1, value_2 );
@@ -47,7 +52,13 @@ const double TOLERANCE = 0.000001;
 //        next_estimate = average( current_value, prev_estimate, iStep );
 //        ++iStep;
 //    }
-double average( const double lhs, const double rhs, const double weight = 1.0 );
+template <class T>
+T average( const T & lhs, const T & rhs, const double weight = 1.0 )
+{
+    if ( ! nearly_integer( weight ) )
+        std::cout << "average( T, T, weight ): warning: weight is not an integer, is that intended?" << std::endl;
+    return ( lhs + weight * rhs ) / ( 1.0 + weight );
+}
 
 int greatest_common_divisor( const int lhs, const int rhs );
 
@@ -70,16 +81,27 @@ inline bool nearly_equal( const double lhs, const double rhs, const double toler
     return ( absolute( rhs - lhs ) < tolerance );
 }
 
-bool triquality( const double x1, const double x2, const double x3, const double tolerance = TOLERANCE );
+template <class T>
+bool triquality( const T & item1, const T & item2, const T & item3, const double tolerance = TOLERANCE )
+{
+    size_t nequalities( 0 );
+    if ( nearly_equal( item1, item2, tolerance ) )
+       ++nequalities;
+    if ( nearly_equal( item1, item3, tolerance ) )
+       ++nequalities;
+    if ( nearly_equal( item2, item3, tolerance ) )
+       ++nequalities;
+    if ( nequalities == 3 )
+       return true;
+    if ( nequalities == 2 )
+       std::cout << "triquality(): Warning: A=B and B=C but A!=C; returning false." << std::endl;
+    return false;
+}
 
 inline bool nearly_zero( const double lhs, const double tolerance = TOLERANCE )
 {
     return ( absolute( lhs ) < tolerance );
 }
-
-// This has to be here because it uses functions defined in Utilities.h and in MathsFunctions.h
-// and otherwise there would be circular references. Well, that is why we started the current file.
-bool nearly_integer( const double value, const double tolerance = TOLERANCE );
 
 double absolute_relative_difference( const double lhs, const double rhs );
 

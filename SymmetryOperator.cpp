@@ -56,11 +56,11 @@ SymmetryOperator::SymmetryOperator( std::string input ) :
 rotation_matrix_( 0.0 )
 {
     std::string original_input( input );
-    // Remove all spaces
+    // Remove all spaces.
     input = remove( input, ' ' );
-    // Split into three parts separated by commas
+    // Split into three parts separated by commas.
     std::vector< std::string > parts;
-    // Find the position of the first comma
+    // Find the position of the first comma.
     size_t iPos1 = input.find_first_of( "," );
     if ( iPos1 == std::string::npos )
         throw std::runtime_error( "SymmetryOperator::SymmetryOperator( std::string ): symmetry line must contain two commas: " + original_input );
@@ -208,7 +208,7 @@ Vector3D SymmetryOperator::intrinsic_translation_part() const
         result = result * ( *this );
     if ( ! result.rotation().is_nearly_the_identity() )
         throw std::runtime_error( "SymmetryOperator::intrinsic_translation_part(): result is not the identity." );
-    return result.translation()/n;
+    return result.translation() / n;
 }
 
 // ********************************************************************************
@@ -220,7 +220,7 @@ bool SymmetryOperator::has_intrinsic_translation() const
 
 // ********************************************************************************
 
-// This is wl in Grosse-Kunstleve
+// This is wl in Grosse-Kunstleve.
 Vector3D SymmetryOperator::location_translation_part() const
 {
     return translation() - intrinsic_translation_part();
@@ -306,8 +306,6 @@ std::string SymmetryOperator::to_string() const
             if ( ! fraction.is_zero() )
             {
                 std::string fraction_str = fraction.to_string();
-                // In principle, fraction_str can now be "1 + 3/4", so we must remove the spaces. (Actually, the fraction is in the range [0,1> so this is *NOT* possible.).
-                fraction_str = remove( fraction_str, ' ' );
                 if ( ( fraction > Fraction( 0 ) ) && ( ! is_first_character ) )
                     result += "+";
                 result += fraction_str;

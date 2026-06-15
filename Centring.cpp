@@ -44,19 +44,19 @@ Centring::Centring()
 
 Centring::Centring( const std::vector< Vector3D > & centring_vectors ):centring_vectors_(centring_vectors)
 {
+    if ( centring_vectors_.empty() )
+        throw std::runtime_error( "Centring::Centring( std::vector< Vector3D > ): error: a centring must have at least one centring vector." );
+    bool zero_vector_found = centring_vectors_[0].nearly_zero();
     // If I am playing around with my "Joke" centring, don't do any exhaustive checking.
     if ( centring_vectors_.size() == 1000 )
     {
         // The first one should be the zero vector.
-        if ( ! centring_vectors_[0].nearly_zero() )
+        if ( ! zero_vector_found )
             throw std::runtime_error( "Centring::Centring(): error: centring is J but the first centring vector is not the zero vector." );
         centring_type_ = J;
         return;
     }
-    if ( centring_vectors_.empty() )
-        throw std::runtime_error( "Centring::Centring( std::vector< Vector3D > ): error: a centring must have at least one centring vector." );
     // Make the zero vector the first centring vector.
-    bool zero_vector_found = centring_vectors_[0].nearly_zero();
     if ( ! zero_vector_found )
     {
         for ( size_t i( 1 ); i != centring_vectors_.size(); ++i )
@@ -68,9 +68,9 @@ Centring::Centring( const std::vector< Vector3D > & centring_vectors ):centring_
                 break;
             }
         }
+        if ( ! zero_vector_found )
+            throw std::runtime_error( "Centring::Centring(): error: zero vector not found." );
     }
-    if ( ! zero_vector_found )
-        throw std::runtime_error( "Centring::Centring(): error: zero vector not found." );
     // Remove duplicates.
     bool duplicates_found( false );
     std::vector< Vector3D > new_centring_vectors;
@@ -113,11 +113,11 @@ Centring::Centring( const std::vector< Vector3D > & centring_vectors ):centring_
     else if ( centring_vectors_.size() == 3 ) // R-centred
     {
         if ( contains( Vector3D( 2.0/3.0, 1.0/3.0, 1.0/3.0 ) ) && contains( Vector3D( 1.0/3.0, 2.0/3.0, 2.0/3.0 ) ) )
-            centring_type_ = R_OBVERSE;
+            centring_type_ = R_OBVERSE; // This is a centring of a hexagonal cell.
         else if ( contains( Vector3D( 1.0/3.0, 2.0/3.0, 1.0/3.0 ) ) && contains( Vector3D( 2.0/3.0, 1.0/3.0, 2.0/3.0 ) ) )
-            centring_type_ = R_REVERSE;
+            centring_type_ = R_REVERSE; // This is a centring of a hexagonal cell.
         else if ( contains( Vector3D( 1.0/3.0, 1.0/3.0, 1.0/3.0 ) ) && contains( Vector3D( 2.0/3.0, 2.0/3.0, 2.0/3.0 ) ) )
-            centring_type_ = D;
+            centring_type_ = D; // This is a centring of a rhombohedral cell.
     }
     else if ( centring_vectors_.size() == 4 ) // F-centred
     {
@@ -246,13 +246,15 @@ Matrix3D Centring::to_primitive() const
                           0.5, -0.5,  0.5,
                           0.5,  0.5, -0.5 );
     if ( centring_type() == R_OBVERSE )
-        return Matrix3D( 2.0/3.0, 1.0/3.0, 1.0/3.0,
-                         1.0/3.0, 2.0/3.0, 2.0/3.0,
-                           0.0,     0.0,     1.0 );
+        // Rhombohedral unit cell.
+        return Matrix3D(  2.0/3.0,  1.0/3.0,  1.0/3.0,
+                         -1.0/3.0,  1.0/3.0,  1.0/3.0,
+                         -1.0/3.0, -2.0/3.0,  1.0/3.0 );
     if ( centring_type() == R_REVERSE )
-        return Matrix3D( 1.0/3.0, 2.0/3.0, 2.0/3.0,
-                         2.0/3.0, 1.0/3.0, 1.0/3.0,
-                           0.0,     0.0,     1.0 );
+        // Rhombohedral unit cell.
+        return Matrix3D(  1.0/3.0,  2.0/3.0,  1.0/3.0,
+                          1.0/3.0, -1.0/3.0,  1.0/3.0,
+                         -2.0/3.0, -1.0/3.0,  1.0/3.0 );
     if ( centring_type() == U )
         throw std::runtime_error( "Centring::to_primitive(): error: no transformation matrix for centring U." );
     if ( centring_type() == J )

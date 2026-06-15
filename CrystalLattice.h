@@ -42,6 +42,25 @@ class CrystalLattice
 {
 public:
 
+/*
+There is no trigonal lattice system, and no trigonal crystal family.
+
++----------------+----------------+----------------+
+| Crystal family | Crystal system | Lattice system |
++----------------+----------------+----------------+
+|                |                |                |
+|                |                |  Rhombohedral  |
+|                |                |                |
+|                |    Trigonal    +----------------+
+|                |                |                |
+|   Hexagonal    |                |   Hexagonal    |
+|                |                |                |
+|                +----------------+----------------+
+|                |                |                |
+|                |   Hexagonal    |   Hexagonal    |
+|                |                |                |
++----------------+----------------+----------------+
+*/
     enum LatticeSystem { TRICLINIC, MONOCLINIC_A, MONOCLINIC_B, MONOCLINIC_C, ORTHORHOMBIC, TETRAGONAL, HEXAGONAL, RHOMBOHEDRAL, CUBIC };
 
     CrystalLattice();
@@ -123,6 +142,10 @@ public:
 
     // The lattice system is initialised by deducing it from the unit-cell parameters.
     LatticeSystem lattice_system() const { return lattice_system_; }
+
+    // Throws if the current unit-cell parameters are not consistent with the lattice system,
+    // but it is possible to start with the unit-cell parameters of a cubic unit cell,
+    // then manually set it to triclinic and then manually set it to cubic again.
     void set_lattice_system( const LatticeSystem lattice_system );
 
     bool b_is_constrained() const { return b_is_constrained_; } // It can then only be constrained to a.
@@ -149,14 +172,14 @@ public:
     Matrix3D Downs_G() const;
     Matrix3D Downs_G_star() const;
 
-// From lattice_system_ if set by user, otherwise from the unit-cell parameters.
-// 1.  1 b = a.
-// 2.  2 All lengths are equal.
-// 3.  4 All angles are equal.
-// 4.  8 alpha = 90.
-// 5. 16 beta = 90.
-// 6. 32 gamma = 90.
-// 7. 64 gamma = 120.
+    // From lattice_system_ if set by user, otherwise from the unit-cell parameters.
+    // 1.  1 b = a.
+    // 2.  2 All lengths are equal.
+    // 3.  4 All angles are equal.
+    // 4.  8 alpha = 90.
+    // 5. 16 beta = 90.
+    // 6. 32 gamma = 90.
+    // 7. 64 gamma = 120.
     char constraints() const { return constraints_; }
 
 private:
@@ -188,7 +211,7 @@ private:
     bool c_is_constrained_; // It can then only be constrained to a.
     char constraints_; // From lattice_system_ if set by user, otherwise from the unit-cell parameters.
 
-// Deduces the lattice system based on the unit-cell parameters.
+    // Deduces the lattice system based on the unit-cell parameters.
     void deduce_lattice_system();
 
 };

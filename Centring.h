@@ -71,6 +71,7 @@ public:
 
     bool is_primitive() const { return size() == 1; }
 
+    // The hexagonal centrings obverse and reverse are reduced to their rhombohedral equivalents.
     Matrix3D to_primitive() const;
 
     bool contains( const Vector3D & centring_vector, const double tolerance = 0.000001 ) const;
