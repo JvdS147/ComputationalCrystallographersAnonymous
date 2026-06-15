@@ -299,13 +299,13 @@ FileName generate_unique_file_name( const FileName & file_name )
 
 // ********************************************************************************
 
-std::vector< FileName > sort_file_names_by_extension( int argc, char** argv, std::vector< std::string > extensions )
+std::vector< FileName > sort_file_names_by_extension( int argc, char** argv, const std::vector< std::string > & extensions )
 {
     std::string expected_extensions;
     for ( size_t i( 0 ); i != extensions.size(); ++i )
         expected_extensions += " " + extensions[i];
     if ( argc != extensions.size() + 1 )
-        throw std::runtime_error( "sort_file_names_by_extension(): Error: expected" + expected_extensions + "." );
+        throw std::runtime_error( "sort_file_names_by_extension(): Error: s expected" + expected_extensions + "." );
     std::vector< FileName > result;
     for ( size_t i( 0 ); i != extensions.size(); ++i )
         result.push_back( FileName( argv[ i+1 ] ) );
@@ -319,7 +319,6 @@ std::vector< FileName > sort_file_names_by_extension( int argc, char** argv, std
             if ( to_upper( result[j].extension() ) == to_upper( extensions[i] ) )
             {
                 std::swap( result[i], result[j] );
-                std::swap( extensions[i], extensions[j] );
                 match_found = true;
                 break;
             }

@@ -75,8 +75,8 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
     powder_pattern.recalculate_estimated_standard_deviations();
     powder_pattern.save_xye( FileName( input_cif_file_name.directory(), input_cif_file_name.name(), "xye" ), false );
     TextFileWriter text_file_writer( replace_extension( input_cif_file_name, "inp" ) );
-    bool file_00000001_Bonds_tsv_exists = FileName( input_cif_file_name.directory(), "00000001-Bonds", "tsv" ).exists();
-    bool file_00000001_AllAngles_tsv_exists = FileName( input_cif_file_name.directory(), "00000001-AllAngles", "tsv" ).exists();
+    bool file_Bonds_tsv_exists = FileName( input_cif_file_name.directory(), "Bonds", "tsv" ).exists();
+    bool file_AllAngles_tsv_exists = FileName( input_cif_file_name.directory(), "AllAngles", "tsv" ).exists();
     std::vector< std::string > bond_labels_1;
     std::vector< std::string > bond_labels_2;
     std::vector< double > bond_target_values;
@@ -84,10 +84,10 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
     std::vector< std::string > angle_labels_2;
     std::vector< std::string > angle_labels_3;
     std::vector< double > angle_target_values;
-    if ( file_00000001_Bonds_tsv_exists )
+    if ( file_Bonds_tsv_exists )
     {
         std::cout << "Bond restraints file found, bond restraints will be written out." << std::endl;
-        TextFileReader_2 file_bond_restraints( FileName( input_cif_file_name.directory(), "00000001-Bonds", "tsv" ) );
+        TextFileReader_2 file_bond_restraints( FileName( input_cif_file_name.directory(), "Bonds", "tsv" ) );
         std::vector< std::string > words;
         for ( size_t i( 1 ); i != file_bond_restraints.size(); ++i )
         {
@@ -112,10 +112,10 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
     }
     else
         std::cout << "No bond restraints file found, no bond restraints will be written out." << std::endl;
-    if ( file_00000001_AllAngles_tsv_exists )
+    if ( file_AllAngles_tsv_exists )
     {
         std::cout << "Angle restraints file found, angle restraints will be written out." << std::endl;
-        TextFileReader_2 file_angle_restraints( FileName( input_cif_file_name.directory(), "00000001-AllAngles", "tsv" ) );
+        TextFileReader_2 file_angle_restraints( FileName( input_cif_file_name.directory(), "AllAngles", "tsv" ) );
         std::vector< std::string > words;
         for ( size_t i( 1 ); i != file_angle_restraints.size(); ++i )
         {
@@ -214,11 +214,11 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
     text_file_writer.write_line( "    CS_L(@ , 9999.99881`)" );
     text_file_writer.write_line( "    Strain_G(@ , 0.49554`)" );
     text_file_writer.write_line( "    Strain_L(@ , 0.03347`)" );
-    text_file_writer.write_line( "    prm sh_scale_l" + aal + " 1.0" );
+    text_file_writer.write_line( "    prm sh_scale_l" + aal + " 0.0001" );
     text_file_writer.write_line( "    spherical_harmonics_hkl sh_l" + aal );
     text_file_writer.write_line( "      sh_order 6" );
     text_file_writer.write_line( "    lor_fwhm = Abs( sh_scale_l" + aal + " * sh_l" + aal + " );" );
-    text_file_writer.write_line( "    prm sh_scale_g" + aal + " 1.0" );
+    text_file_writer.write_line( "    prm sh_scale_g" + aal + " 0.0001" );
     text_file_writer.write_line( "    spherical_harmonics_hkl sh_g" + aal );
     text_file_writer.write_line( "      sh_order 6" );
     text_file_writer.write_line( "    gauss_fwhm = Abs( sh_scale_g" + aal + " * sh_g" + aal + " );" );
@@ -242,7 +242,7 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
         else
             text_file_writer.write_line( "bnonh" + aal + ";" );
     }
-    if ( file_00000001_Bonds_tsv_exists )
+    if ( file_Bonds_tsv_exists )
     {
         text_file_writer.write_line( "    prm !bond_width  0" );
         text_file_writer.write_line( "    prm !bond_weight 10000" );
@@ -254,7 +254,7 @@ void inp_writer( const FileName & input_cif_file_name, const FileName & input_xy
                 text_file_writer.write_line( "    Distance_Restrain( " + bond_labels_1[i] + " " + bond_labels_2[i] + ", " + double2string( bond_target_values[i] ) + ", 0.0, bond_width, bond_weight )" );
         }
     }
-    if ( file_00000001_AllAngles_tsv_exists )
+    if ( file_AllAngles_tsv_exists )
     {
         text_file_writer.write_line( "    prm !angle_width  0" );
         text_file_writer.write_line( "    prm !angle_weight 1" );

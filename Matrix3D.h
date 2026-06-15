@@ -73,7 +73,7 @@ public:
 
     double maximum_absolute_value_in_column( const size_t i ) const;
 
-    bool is_diagonal() const;
+    bool is_diagonal( const double tolerance = TOLERANCE ) const;
 
     // Returns the determinant of the minor matrix defined by element i,j.
     // In keeping with the silly C++ convention: zero-based.

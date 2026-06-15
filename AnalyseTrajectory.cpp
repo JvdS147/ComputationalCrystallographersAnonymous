@@ -100,6 +100,8 @@ void AnalyseTrajectory::analyse()
     {
         crystal_structure.collapse_supercell( u_, v_, w_, NONE, drift_correction_vector_, actual_centre, fractional_positions_frame );
         drift_correction_vector_ = actual_centre;
+        if ( drift_correction_ == USE_FIRST_FRAME )
+            drift_correction_ = USE_VECTOR;
     }
     else // USE_VECTOR
         crystal_structure.collapse_supercell( u_, v_, w_, drift_correction_, drift_correction_vector_, actual_centre, fractional_positions_frame );

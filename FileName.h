@@ -135,7 +135,7 @@ FileName generate_unique_file_name( const FileName & file_name );
 
 // This is to sort file names that are given as arguments.
 // Stable sort. Case insensitive.
-std::vector< FileName > sort_file_names_by_extension( int argc, char** argv, std::vector< std::string > extensions );
+std::vector< FileName > sort_file_names_by_extension( int argc, char** argv, const std::vector< std::string > & extensions );
 
 #endif // FILENAME_H
 

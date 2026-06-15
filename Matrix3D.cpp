@@ -176,11 +176,11 @@ double Matrix3D::maximum_absolute_value_in_column( const size_t i ) const
 
 // ********************************************************************************
 
-bool Matrix3D::is_diagonal() const
+bool Matrix3D::is_diagonal( const double tolerance ) const
 {
-    return ( nearly_zero( data_[0][1] ) && nearly_zero( data_[0][2] ) && 
-             nearly_zero( data_[1][0] ) && nearly_zero( data_[1][2] ) && 
-             nearly_zero( data_[2][0] ) && nearly_zero( data_[2][1] ) );
+    return ( nearly_zero( data_[0][1], tolerance ) && nearly_zero( data_[0][2], tolerance ) &&
+             nearly_zero( data_[1][0], tolerance ) && nearly_zero( data_[1][2], tolerance ) &&
+             nearly_zero( data_[2][0], tolerance ) && nearly_zero( data_[2][1], tolerance ) );
 }
 
 // ********************************************************************************
