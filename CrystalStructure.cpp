@@ -30,8 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BasicMathsFunctions.h"
 #include "ChemicalFormula.h"
 #include "ConnectivityTable.h"
+#include "Eigenvalue.h"
 #include "FileName.h"
 #include "Mapping.h"
+#include "NormalisedVector3D.h"
 #include "PhysicalConstants.h"
 #include "PointGroup.h"
 #include "RunningAverageAndESD.h"
@@ -85,6 +87,43 @@ void CrystalStructure::add_atoms( const std::vector< Atom > & atoms )
     for ( size_t i( 0 ); i != atoms.size(); ++i )
         suppressed_.push_back( false );
     basic_checks();
+}
+
+// ********************************************************************************
+
+void CrystalStructure::split_ADPs( const size_t i, const double factor )
+{
+    Atom this_atom = atom( i );
+    if ( this_atom.ADPs_type() != Atom::ANISOTROPIC )
+    {
+        std::cout << "CrystalStructure::split_ADPs(): Warning: atom does not have ADPs." << std::endl;
+        return;
+    }
+    SymmetricMatrix3D Ucart = this_atom.anisotropic_displacement_parameters().U_cart();
+    std::vector< double > eigenvalues;
+    std::vector< NormalisedVector3D > eigenvectors;
+    calculate_eigenvalues( Ucart, eigenvalues, eigenvectors );
+    // Uiso = U_cart().trace() / 3.0;
+    // U_cart().trace() = eigenvalues[2] + eigenvalues[1] + eigenvalues[0]
+    // By splitting an atom over two positions, we say that only half of the largest principal axis is to be assigned to this atom, the other half should be assigned to the other atom.
+    // So the U_cart().trace() for this atom should be ( 0.5 * eigenvalues[2] ) + eigenvalues[1] + eigenvalues[0]
+    // double new_Uiso = ( ( 0.5 * eigenvalues[2] ) + eigenvalues[1] + eigenvalues[0] ) / 3.0;
+    // I did not like these Uisos, they were too big. The volume of an ellipsoid is k * a * b * c where a, b, and c are the principal axes. For a sphere, it is k * r^3.
+    // So just calculate the volume, and calculate the radius that would give a sphere with half the volume.
+    double new_Uiso = std::pow( 0.5 * eigenvalues[2] * eigenvalues[1] * eigenvalues[0], 1.0/3.0 );
+    // It is clear that some arbitrary scaling factor must be involved, because the size of the ADP depends on the probability level.
+    // Empirically, 0.75 is a good value.
+    // r = r +/- s * sqrt( eigenvalues[2] ) * G-1 * eigenvectors[2]
+    Vector3D delta_r = factor * sqrt( eigenvalues[2] ) * ( crystal_lattice().orthogonal_to_fractional_matrix() * eigenvectors[2] );
+    Atom new_atom( this_atom );
+    new_atom.set_occupancy( 0.5 );
+    new_atom.set_Uiso( new_Uiso );
+    new_atom.set_position( this_atom.position() + delta_r );
+    new_atom.set_label( this_atom.label() + "a" );
+    add_atom( new_atom );
+    new_atom.set_position( this_atom.position() - delta_r );
+    new_atom.set_label( this_atom.label() + "b" );
+    set_atom( i, new_atom );
 }
 
 // ********************************************************************************

@@ -92,6 +92,15 @@ public:
     void add_atom( const Atom & atom );
     void add_atoms( const std::vector< Atom > & atoms );
 
+    // Takes a disordered atom that has been modelled as large anisotropic ADPs and
+    // replaces it by two atoms, i.e. by a split-atom model.
+    // The original atom is deleted, the crystal structure as a whole is therefore still the same,
+    // e.g. still has nearly the same powder diffraction pattern.
+    // The occupancy of the two new atoms is 0.5. The volumes of their two Uiso-values sum up to the old ADP volume.
+    // "scale" determines the distance from the averaged atom at which the two new atoms are positioned,
+    // as a fraction of the largest eigenvalue of the ellipsoid.
+    void split_ADPs( const size_t i, const double scale = 0.75 );
+
     void remove_H_and_D();
 
     // Hydrogen atoms are assigned 1.2 * the global Uiso value.
