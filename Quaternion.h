@@ -62,7 +62,7 @@ public:
     // The reciprocal value is taken.
     void reciprocal();
 
-    // Multiplies the quaternion by itself
+    // Multiplies the quaternion by itself.
     void square();
 
     // Raises the quaternion to n.

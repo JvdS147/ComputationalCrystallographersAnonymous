@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class TestSuite;
 
 void test_angle( TestSuite & test_suite );
+void test_basic_maths_functions( TestSuite & test_suite );
 void test_Chebyshev_background( TestSuite & test_suite );
 void test_chemical_formula( TestSuite & test_suite );
 void test_Complex( TestSuite & test_suite );

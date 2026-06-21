@@ -132,9 +132,8 @@ AnisotropicDisplacementParameters transform_adps( const AnisotropicDisplacementP
     SymmetricMatrix3D U_star = ADPs.U_star( crystal_lattice );
     crystal_lattice.transform( transformation );
     transformation.invert();
-    transformation.transpose();
-    // The actual transformation of the ADPs
-    U_star = Matrix3D2SymmetricMatrix3D( transformation * U_star * transpose( transformation ) );
+    // The actual transformation of the ADPs.
+    U_star = Matrix3D2SymmetricMatrix3D( transpose( transformation ) * U_star * transformation );
     return AnisotropicDisplacementParameters( U_star_2_U_cart( U_star, crystal_lattice ) );
 }
 

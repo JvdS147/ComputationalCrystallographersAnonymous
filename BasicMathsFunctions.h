@@ -33,10 +33,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const double TOLERANCE = 0.000001;
 
-// This has to be here because it uses functions defined in Utilities.h and in MathsFunctions.h
+// This has to be here because it uses functions defined in Utilities.h and in MathsFunctions.h.
 // and otherwise there would be circular references. Well, that is why we started the current file.
 bool nearly_integer( const double value, const double tolerance = TOLERANCE );
 
+// average = ( 1.0 * lhs + weight * rhs ) / ( 1.0 + weight ).
 // To calculate the average of four values:
 // double average = average( value_1, value_2 );
 // average = average( value_3, average, 2.0 );
@@ -52,12 +53,18 @@ bool nearly_integer( const double value, const double tolerance = TOLERANCE );
 //        next_estimate = average( current_value, prev_estimate, iStep );
 //        ++iStep;
 //    }
+//
+// To calculate x*lhs + y*rhs (e.g. x*lhs + (1-x)*rhs):
+// average( lhs, rhs, (1.0-x)/x );
+//
+// We do not divide by the sum of the weights but multiply from the left by the reciprocal of the sum of the weights.
+// That way, we can implement this averaging also for objects like CrystalLattice and PowderPattern.
 template <class T>
 T average( const T & lhs, const T & rhs, const double weight = 1.0 )
 {
     if ( ! nearly_integer( weight ) )
         std::cout << "average( T, T, weight ): warning: weight is not an integer, is that intended?" << std::endl;
-    return ( lhs + weight * rhs ) / ( 1.0 + weight );
+    return ( 1.0 / ( 1.0 + weight ) ) * ( lhs + weight * rhs );
 }
 
 int greatest_common_divisor( const int lhs, const int rhs );
@@ -110,7 +117,7 @@ inline double square( const double x )
     return ( x * x );
 }
 
-// returns 0 if x = 0.0
+// returns 0 if x = 0.0.
 inline int sign( const double x )
 {
     return ( 0.0 < x ) - ( x < 0.0 );
