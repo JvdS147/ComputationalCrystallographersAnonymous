@@ -89,6 +89,13 @@ public:
     bool include_finger_cox_jephcoat() const { return include_finger_cox_jephcoat_; }
     FingerCoxJephcoat finger_cox_jephcoat() const { return finger_cox_jephcoat_; }
 
+    void set_anisotropic_peak_broadening( const double anisotropic_peak_broadening_extent );
+
+    void unset_anisotropic_peak_broadening() { include_anisotropic_peak_broadening_ = false; }
+
+    bool include_anisotropic_peak_broadening() const { return include_anisotropic_peak_broadening_; }
+    double anisotropic_peak_broadening_extent() const { return anisotropic_peak_broadening_extent_; }
+
 // Same for eta and/or peak shape
 
     void calculate( PowderPattern & powder_pattern );
@@ -125,6 +132,8 @@ private:
     double r_;
     bool include_finger_cox_jephcoat_;
     FingerCoxJephcoat finger_cox_jephcoat_;
+    bool include_anisotropic_peak_broadening_;
+    double anisotropic_peak_broadening_extent_;
     const CrystalStructure & crystal_structure_; // Creating a copy would be too expensive given that we have tens of thousands of atoms.
     // But what if the crystal structure goes out of scope and the destructor is called? We need a smart pointer here.
     PointGroup Laue_class_;

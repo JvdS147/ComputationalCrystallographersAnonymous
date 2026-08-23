@@ -51,6 +51,8 @@ r_(1.0),
 include_finger_cox_jephcoat_(false),
 A_(0.0001),
 B_(0.0001),
+include_anisotropic_peak_broadening_(false),
+anisotropic_peak_broadening_extent_( 0.0 ),
 include_background_(true),
 include_noise_(true),
 include_noise_for_zero_background_(true),
@@ -75,6 +77,8 @@ r_(1.0),
 include_finger_cox_jephcoat_(false),
 A_(0.0001),
 B_(0.0001),
+include_anisotropic_peak_broadening_(false),
+anisotropic_peak_broadening_extent_( 0.0 ),
 include_background_(true),
 include_noise_(true),
 include_noise_for_zero_background_(true),
@@ -130,6 +134,10 @@ highest_peak_(10000.0)
     A_ = string2double( input );
     input = extract_variable_value( tfr.line( tfr.find_whole_word( "B" ) ), splitter );
     B_ = string2double( input );
+    input = extract_variable_value( tfr.line( tfr.find_whole_word( "include_anisotropic_peak_broadening" ) ), splitter );
+    include_anisotropic_peak_broadening_ = string2bool( input );
+    input = extract_variable_value( tfr.line( tfr.find_whole_word( "anisotropic_peak_broadening_extent" ) ), splitter );
+    anisotropic_peak_broadening_extent_ = string2double( input );
     input = extract_variable_value( tfr.line( tfr.find_whole_word( "include_background" ) ), splitter );
     include_background_ = string2bool( input );
     input = extract_variable_value( tfr.line( tfr.find_whole_word( "include_noise" ) ), splitter );
@@ -221,6 +229,14 @@ void RealisticXRPDSimulatorSettings::set_finger_cox_jephcoat( const double A, co
 
 // ********************************************************************************
 
+void RealisticXRPDSimulatorSettings::set_anisotropic_peak_broadening( const double anisotropic_peak_broadening_extent )
+{
+    include_anisotropic_peak_broadening_ = true;
+    anisotropic_peak_broadening_extent_ = anisotropic_peak_broadening_extent;
+}
+
+// ********************************************************************************
+
 void RealisticXRPDSimulatorSettings::set_include_noise_for_zero_background( const size_t threshold )
 {
     include_noise_for_zero_background_ = true;
@@ -254,6 +270,8 @@ void RealisticXRPDSimulatorSettings::save( const FileName & file_name ) const
     tfw.write_line( "include_finger_cox_jephcoat : " + bool2string( include_finger_cox_jephcoat_ ) );
     tfw.write_line( "A : " + double2string( A_ ) );
     tfw.write_line( "B : " + double2string( B_ ) );
+    tfw.write_line( "include_anisotropic_peak_broadening : " + bool2string( include_anisotropic_peak_broadening_ ) );
+    tfw.write_line( "anisotropic_peak_broadening_extent : " + double2string( anisotropic_peak_broadening_extent_ ) );
     tfw.write_line( "include_background : " + bool2string( include_background_ ) );
     tfw.write_line( "include_noise : " + bool2string( include_noise_ ) );
     tfw.write_line( "include_noise_for_zero_background : " + bool2string( include_noise_for_zero_background_ ) );

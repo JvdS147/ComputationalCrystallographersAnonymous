@@ -81,6 +81,13 @@ public:
     double A() const { return A_; }
     double B() const { return B_; }
 
+    void set_anisotropic_peak_broadening( const double anisotropic_peak_broadening_extent );
+
+    void unset_anisotropic_peak_broadening() { include_anisotropic_peak_broadening_ = false; }
+
+    bool include_anisotropic_peak_broadening() const { return include_anisotropic_peak_broadening_; }
+    double anisotropic_peak_broadening_extent() const { return anisotropic_peak_broadening_extent_; }
+
     bool include_background() const { return include_background_; }
     void set_include_background( const bool include_background ) { include_background_ = include_background; }
 
@@ -120,6 +127,8 @@ private:
     bool include_finger_cox_jephcoat_;
     double A_; // Finger-Cox-Jephcoat.
     double B_; // Finger-Cox-Jephcoat.
+    bool include_anisotropic_peak_broadening_;
+    double anisotropic_peak_broadening_extent_;
     bool include_background_;
     bool include_noise_;
     bool include_noise_for_zero_background_;

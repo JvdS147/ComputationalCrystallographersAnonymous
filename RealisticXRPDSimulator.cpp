@@ -66,6 +66,8 @@ PowderPattern RealisticXRPDSimulator::calculate()
             powder_pattern_calculator.set_preferred_orientation( settings_.preferred_orientation_direction(), settings_.r() );
         if ( settings_.include_finger_cox_jephcoat() )
             powder_pattern_calculator.set_finger_cox_jephcoat( FingerCoxJephcoat( settings_.A(), settings_.B() ) );
+        if ( settings_.include_anisotropic_peak_broadening() )
+            powder_pattern_calculator.set_anisotropic_peak_broadening( settings_.anisotropic_peak_broadening_extent() );
         powder_pattern_calculator.calculate( Bragg_diffraction_ );
         Bragg_diffraction_.normalise_total_signal( settings_.Bragg_total_signal_normalisation() );
         powder_pattern_ = Bragg_diffraction_;

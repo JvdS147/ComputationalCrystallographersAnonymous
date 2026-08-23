@@ -56,7 +56,7 @@ namespace
 std::vector< double > peak_shape( const Angle two_theta_step, const double FWHM )
 {
     // Find number of points out to the right that need to be calculated to reach 0.1% of intensity at 0.0.
-    std::vector<double> values;
+    std::vector< double > values;
     values.reserve( 137 ); // 44 for 1% of intensity, but the value also depends on eta.
     double I100 = pseudo_Voigt( 0.0, FWHM );
     values.push_back( I100 );
@@ -80,6 +80,36 @@ std::vector< double > peak_shape( const Angle two_theta_step, const double FWHM 
     return result;
 }
 
+// ********************************************************************************
+
+// Only meant to introduce some anisotropic peak broadening into simulated powder diffraction patterns
+// in order to make them more realistic. Only [100], [010] and [001] are given a value.
+// The FWHM contributions to the Gaussian and the Lorentzian part should be different,
+// but I just modify FWHM and use the same value for both.
+double Stephens_FWHM( const double s400, const double s040, const double s004, const Angle theta, const MillerIndices & miller_indices, const double d2, const double FWHM )
+{
+    double h = miller_indices.h();
+    double k = miller_indices.k();
+    double l = miller_indices.l();
+    double Mhkl = s400 * std::pow( h, 4 ) + s040 * std::pow( k, 4 ) + s004 * std::pow( l, 4 );
+
+//// Triclinic (all 15):
+//    double Mhkl = s400 * h^4 + s040 * k^4 + s004 * l^4 +
+//                  s022 * k^2 * l^2 + s202 * h^2 * l^2 + s220 * h^2 * k^2 +
+//                  s211 * h^2 * k * l + s121 * h * k^2 * l + s112 * h * k * l^2 +
+//                  s013 * k * l^3 + s031 * k^3 * l + s103 * h * l^3 + s130 * h * k^3 + s301 * h^3 * l + s310 * h^3 * k;
+
+    double pp = d2 * sqrt( Mhkl ) / 1000.0;
+    return FWHM + ( 1.8 / 3.1415927 ) * pp * theta.tangent();
+
+// Correct:
+//    Gaussian   FWHM = (1.0-eta) * 1.8/3.1415927 * pp * theta.tangent();
+//    Lorentzian FWHM = eta       * 1.8/3.1415927 * pp * theta.tangent();
+// But I use:
+//    Gaussian   FWHM = 1.8/3.1415927 * pp * theta.tangent();
+//    Lorentzian FWHM = 1.8/3.1415927 * pp * theta.tangent();
+}
+
 } // namespace
 
 // ********************************************************************************
@@ -95,6 +125,8 @@ preferred_orientation_direction_( 0, 0, 0 ),
 r_(1.0),
 include_finger_cox_jephcoat_(false),
 finger_cox_jephcoat_( 0.0001, 0.0001 ),
+include_anisotropic_peak_broadening_(false),
+anisotropic_peak_broadening_extent_( 0.0 ),
 crystal_structure_(crystal_structure)
 {
     if ( ! crystal_structure.space_group_symmetry_has_been_applied() )
@@ -158,6 +190,14 @@ void PowderPatternCalculator::set_finger_cox_jephcoat( const FingerCoxJephcoat &
 {
     include_finger_cox_jephcoat_ = true;
     finger_cox_jephcoat_ = finger_cox_jephcoat;
+}
+
+// ********************************************************************************
+
+void PowderPatternCalculator::set_anisotropic_peak_broadening( const double anisotropic_peak_broadening_extent )
+{
+    include_anisotropic_peak_broadening_ = true;
+    anisotropic_peak_broadening_extent_ = anisotropic_peak_broadening_extent;
 }
 
 // ********************************************************************************
@@ -322,8 +362,16 @@ void PowderPatternCalculator::calculate_structure_factors()
 void PowderPatternCalculator::calculate( const ReflectionList & reflection_list, PowderPattern & powder_pattern )
 {
     powder_pattern = PowderPattern( two_theta_start_, two_theta_end_, two_theta_step_ );
+    double FWHM = FWHM_;
+    double s400 = crystal_structure_.crystal_lattice().a_star();
+    double s040 = crystal_structure_.crystal_lattice().b_star();
+    double s004 = crystal_structure_.crystal_lattice().c_star();
+
+//    double scale_factor = std::max( std::max( s400, s040), s004 ) / std::min( std::min( s400, s040), s004 );
+//    std::cout << "scale_factor = " << scale_factor << std::endl;
+
     // Calculate one peak with area 1.0.
-    std::vector< double > peak_points = peak_shape( two_theta_step_, FWHM_ );
+    std::vector< double > peak_points = peak_shape( two_theta_step_, FWHM );
     Vector3D PO_vector;
     if ( include_preferred_orientation_ )
         PO_vector = reciprocal_lattice_point( preferred_orientation_direction_, crystal_structure_.crystal_lattice() );
@@ -354,6 +402,12 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
         // Multiply by the LP factor.
         double LP_factor = ( 1.0 + square( two_theta.cosine() ) ) / ( 2.0 * two_theta.sine() * theta.sine() );
         peak_intensity *= LP_factor;
+        if ( include_anisotropic_peak_broadening_ )
+        {
+            FWHM = Stephens_FWHM( s400, s040, s004, theta, reflection_list.miller_indices( i ), square( reflection_list.d_spacing( i ) ), FWHM_ );
+            std::cout << "FWHM = " << FWHM << std::endl;
+            peak_points = peak_shape( two_theta_step_, FWHM );
+        }
         if ( include_finger_cox_jephcoat_ && ( two_theta < Angle::angle_45_degrees() ) )
         {
             // Peak asymmetry just goes on and on, we essentially have to start at 2theta = 0.0.
@@ -369,7 +423,7 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
                 ++j;
             }
             while ( current_2theta < maximum_2theta_value_for_FCJ );
-            std::vector< double > peak_points_2 = finger_cox_jephcoat_.asymmetric_peak( two_theta, two_phi_values, FWHM_ );
+            std::vector< double > peak_points_2 = finger_cox_jephcoat_.asymmetric_peak( two_theta, two_phi_values, FWHM );
             for ( size_t index( 0 ); index != peak_points_2.size(); ++index )
             {
                 double intensity = powder_pattern.intensity( index );
@@ -388,7 +442,7 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
                 if ( ( index < 0 ) || ( index >= powder_pattern.size() ) )
                     continue;
                 double intensity = powder_pattern.intensity( index );
-                intensity += peak_intensity * pseudo_Voigt( ( powder_pattern.two_theta( index ) - two_theta ).value_in_degrees(), FWHM_ );
+                intensity += peak_intensity * pseudo_Voigt( ( powder_pattern.two_theta( index ) - two_theta ).value_in_degrees(), FWHM );
                 powder_pattern.set_intensity( index, intensity );
             }
         }
