@@ -28,12 +28,17 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
+class Atom;
 class CrystalStructure;
 class FileName;
 
 #include <vector>
 
 void save_as_xyz( const CrystalStructure & crystal_structure, const FileName & file_name );
+
+// The atomic coordinates stored inside the atom class are usually fractional
+// coordinates but must be Cartesian coordinates for this function.
+void save_as_xyz( const std::vector< Atom > & atoms, const FileName & file_name );
 
 #endif // XYZFILE_H
 

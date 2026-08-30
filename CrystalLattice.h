@@ -120,7 +120,7 @@ There is no trigonal lattice system, and no trigonal crystal family.
     SymmetricMatrix3D N() const { return N_; }
     SymmetricMatrix3D N_inverse() const { return N_inverse_; }
 
-    // Rescales a, b and c isotropically so that the new unit cell volume becomes
+    // Rescales a, b and c isotropically so that the new unit-cell volume becomes
     // equal to the specified target_volume. alpha, beta and gamma are not changed.
     // If Z is specified for the target_volume, tries to guess Z from the current unit-cell volume and
     // adjusts accordingly.

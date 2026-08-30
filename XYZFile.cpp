@@ -57,3 +57,18 @@ void save_as_xyz( const CrystalStructure & crystal_structure, const FileName & f
 
 // ********************************************************************************
 
+void save_as_xyz( const std::vector< Atom > & atoms, const FileName & file_name )
+{
+    TextFileWriter text_file_writer( file_name );
+    text_file_writer.write_line( size_t2string( atoms.size() ) );
+    text_file_writer.write_line( "" );
+    for ( size_t i( 0 ); i != atoms.size(); ++i )
+    {
+        text_file_writer.write_line( pad( atoms[i].element().symbol(), 2 ) + " " + double2string( atoms[i].position().x() ) + " " +
+                                                                                   double2string( atoms[i].position().y() ) + " " +
+                                                                                   double2string( atoms[i].position().z() ) );
+    }
+}
+
+// ********************************************************************************
+
