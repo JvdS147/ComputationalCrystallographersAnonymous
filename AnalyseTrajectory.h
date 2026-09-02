@@ -100,7 +100,6 @@ public:
 
     void analyse();
 
-
 //  ADPs / ESDs / averages
 
 private:
