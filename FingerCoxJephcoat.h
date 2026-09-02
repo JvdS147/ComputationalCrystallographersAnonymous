@@ -53,6 +53,8 @@ public:
     // In practice, A and B cannot be 0.0 but must at least be, say, 0.0001.
     // If they are 0.0001, then it is as if the peaks are symmetric.
     // A = H/L, B = S/L.
+    // S is the sample size, H is the detector size. In order to be physically realistic, S should be slightly smaller than H.
+    // Realistic values are for example A = 12.5 / 400.0, B = 10.0 / 400.0
     FingerCoxJephcoat( const double A, const double B );
 
     // DASH reports "H plus S over L" (HPSL) and "H minus S over L" (HMSL).
