@@ -321,7 +321,7 @@ void PowderPatternCalculator::calculate_structure_factors()
             if ( crystal_structure_.atom(j).ADPs_type() == Atom::ANISOTROPIC )
             {
                 AnisotropicDisplacementParameters ADPs = crystal_structure_.atom(j).anisotropic_displacement_parameters();
-                T = exp( -2.0 * square( CONSTANT_PI ) * ( miller_indices * ADPs.U_star( crystal_structure_.crystal_lattice() ) * miller_indices ) );
+                T = exp( -2.0 * square( CONSTANT_PI ) * ( MillerIndices2Vector3D( miller_indices ) * ADPs.U_star( crystal_structure_.crystal_lattice() ) * MillerIndices2Vector3D( miller_indices ) ) );
             }
             else if ( crystal_structure_.atom(j).ADPs_type() == Atom::ISOTROPIC )
             {
@@ -405,7 +405,7 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
         if ( include_anisotropic_peak_broadening_ )
         {
             FWHM = Stephens_FWHM( s400, s040, s004, theta, reflection_list.miller_indices( i ), square( reflection_list.d_spacing( i ) ), FWHM_ );
-            std::cout << "FWHM = " << FWHM << std::endl;
+//            std::cout << "FWHM = " << FWHM << std::endl;
             peak_points = peak_shape( two_theta_step_, FWHM );
         }
         if ( include_finger_cox_jephcoat_ && ( two_theta < Angle::angle_45_degrees() ) )
