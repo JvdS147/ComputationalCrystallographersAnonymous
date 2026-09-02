@@ -43,6 +43,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ********************************************************************************
 
+Vector3D MillerIndices2Vector3D( const MillerIndices & miller_indices )
+{
+    return Vector3D( miller_indices.h(), miller_indices.k(), miller_indices.l() );
+}
+
+// ********************************************************************************
+
 std::vector< Matrix3D > orthorhombic_unit_cell_axes_permutations()
 {
     std::vector< Matrix3D > result;

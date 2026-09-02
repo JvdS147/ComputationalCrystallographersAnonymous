@@ -66,6 +66,8 @@ class Vector3D;
 
 //SpecialPositionsReport special_positions_report()
 
+Vector3D MillerIndices2Vector3D( const MillerIndices & miller_indices );
+
 // In a orthorhombic space groups we can have a couple of permutations for the axes.
 // There are three axes, so there should be 3! = 6 permutations, I think.
 // They are abc, cab, bca, ba-c, c-ba, -acb.
@@ -80,7 +82,9 @@ Vector3D reciprocal_lattice_point( const MillerIndices miller_indices, const Cry
 
 NormalisedVector3D reciprocal_lattice_direction( const MillerIndices miller_indices, const CrystalLattice & crystal_lattice );
 
-//MillerIndices operator*( const Matrix3D & matrix, const MillerIndices & miller_indices );
+// @@@ These are a major problem... MillerIndices stores integers and there is no reason why the product of multiplying integers by an arbitrary matrix
+// makes sense when interpreted as integers.
+// MillerIndicesoperator*( const Matrix3D & matrix, const MillerIndices & miller_indices );
 MillerIndices operator*( const MillerIndices & miller_indices, const Matrix3D & matrix );
 MillerIndices operator*( const MillerIndices & miller_indices, const SymmetricMatrix3D & matrix );
 
