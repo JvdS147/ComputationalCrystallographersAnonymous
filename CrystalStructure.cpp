@@ -1187,7 +1187,7 @@ void CrystalStructure::collapse_supercell( const size_t u,
         {
             size_t jatom = natoms_per_asymmetric_unit * j + i;
             if ( atoms_[ i ].element() != atoms_[ jatom ].element() )
-                    std::cout << "CrystalStructure::collapse_supercell( ): Warning: the atoms to be averaged have different elements." << std::endl;
+                std::cout << "CrystalStructure::collapse_supercell( ): Warning: the atoms to be averaged have different elements." << std::endl;
             double smallest_norm2 = 10000000.0;
             Vector3D smallest_norm2_position;
             for ( size_t k( 0 ); k != space_group_.nsymmetry_operators(); ++k ) // SpaceGroup::symmetry_operator( i ) returns a copy, so this is extremely wasteful.
@@ -1210,7 +1210,7 @@ void CrystalStructure::collapse_supercell( const size_t u,
             if ( smallest_norm2 > 25.0 )
                 ++ndistances_gt_5;
             if ( smallest_norm2 == 10000000.0 )
-                    std::cout << "Oops..." << std::endl;
+                std::cout << "Oops..." << std::endl;
             positions_2.push_back( smallest_norm2_position );
         }
         positions.push_back( positions_2 );
