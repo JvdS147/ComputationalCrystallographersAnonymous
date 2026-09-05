@@ -354,7 +354,12 @@ void PowderPattern::save_xye( const FileName & file_name, const bool include_wav
 {
     TextFileWriter text_file_writer( file_name );
     if ( include_wave_length )
-        text_file_writer.write_line( double2string( wavelength_.wavelength_1() ) );
+    {
+        if ( wavelength_.radiation_source() == Wavelength::SYNCHROTRON )
+            text_file_writer.write_line( double2string( wavelength_.wavelength() ) );
+        else
+            text_file_writer.write_line( double2string( wavelength_.wavelength_1() ) );
+    }
     for ( size_t i( 0 ); i != size(); ++i )
         text_file_writer.write_line( double2string( two_theta_values_[i].value_in_degrees(), 5 ) + "  " + double2string( intensities_[i] ) + "  " + double2string( estimated_standard_deviations_[i] ) );
 }
