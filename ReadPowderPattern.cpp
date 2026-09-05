@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BasicMathsFunctions.h"
 #include "FileName.h"
 #include "PowderPattern.h"
+#include "RingBuffer.h"
 #include "StringFunctions.h"
 #include "TextFileReader.h"
 #include "TextFileReader_2.h"
@@ -154,10 +155,48 @@ PowderPattern read_cif( const FileName & file_name )
             if ( words.size() != 1 )
                 throw std::runtime_error( "PowderPattern::read_cif(): loop_ should be the only keyword on a line." );
             if ( ! text_file_reader.get_next_line( words ) )
-                throw std::runtime_error( "PowderPattern::read_cif(): loop_ not followed by values." );
-            if ( words[0] != "_pd_meas_counts_total" )
-                throw std::runtime_error( "PowderPattern::read_cif(): only _pd_meas_counts_total in loop_ has been implemented." );
+                throw std::runtime_error( "PowderPattern::read_cif(): loop_ not followed by keywords." );
+            std::vector< std::string > keywords;
+            while ( ( words.size() == 1 ) && ( words[0].substr( 0, 1 ) == "_" ) )
+            {
+                keywords.push_back( words[0] );
+                if ( ! text_file_reader.get_next_line( words ) )
+                    throw std::runtime_error( "PowderPattern::read_cif(): loop_ followed by keyword but not by values." );
+            }
+            text_file_reader.push_back_last_line();
+            // Find either _pd_meas_counts_total or _pd_meas_intensity_total.
+            bool _pd_meas_counts_total_found( false );
+            bool _pd_meas_intensity_total_found( false );
+            for ( size_t i( 0 ); i != keywords.size(); ++i )
+            {
+                if ( keywords[i] == "_pd_meas_counts_total" )
+                {
+                    if ( _pd_meas_counts_total_found )
+                        throw std::runtime_error( "PowderPattern::read_cif(): _pd_meas_counts_total found twice." );
+                    _pd_meas_counts_total_found = true;
+                }
+                if ( keywords[i] == "_pd_meas_intensity_total" )
+                {
+                    if ( _pd_meas_intensity_total_found )
+                        throw std::runtime_error( "PowderPattern::read_cif(): _pd_meas_intensity_total found twice." );
+                    _pd_meas_intensity_total_found = true;
+                }
+            }
+            if ( ( ! _pd_meas_counts_total_found ) && ( ! _pd_meas_intensity_total_found ) )
+                throw std::runtime_error( "PowderPattern::read_cif(): either _pd_meas_counts_total or _pd_meas_intensity_total must be present." );
+            size_t _pd_meas_counts_total_index;
+            size_t _pd_meas_intensity_total_index;
+            for ( size_t i( 0 ); i != keywords.size(); ++i )
+            {
+                if ( keywords[i] == "_pd_meas_counts_total" )
+                    _pd_meas_counts_total_index = i;
+                if ( keywords[i] == "_pd_meas_intensity_total" )
+                    _pd_meas_intensity_total_index = i;
+            }
+            if ( _pd_meas_intensity_total_found && ( ! _pd_meas_counts_total_found ) )
+                _pd_meas_counts_total_index = _pd_meas_intensity_total_index;
             std::string line;
+            RingBuffer< double > ring_buffer( 100 );
             while ( text_file_reader.get_next_line( line ) )
             {
                 line = remove_from( line, '#' );
@@ -165,13 +204,25 @@ PowderPattern read_cif( const FileName & file_name )
                 try
                 {
                     for ( size_t i( 0 ); i != words.size(); ++i )
-                        counts.push_back( string2double( words[ i ] ) );
+                        ring_buffer.write( string2double( words[ i ] ) );
                 }
                 catch ( std::exception & e )
                 {
                     break;
                 }
+                while ( ring_buffer.size() >= keywords.size() )
+                {
+                    std::vector< double > next_batch;
+                    for ( size_t i( 0 ); i != keywords.size(); ++i )
+                        next_batch.push_back( ring_buffer.read() );
+                    if ( _pd_meas_counts_total_found && _pd_meas_intensity_total_found )
+                        if ( ! nearly_equal( next_batch[ _pd_meas_counts_total_index ], next_batch[ _pd_meas_intensity_total_index ] ) )
+                            throw std::runtime_error( "PowderPattern::read_cif(): _pd_meas_counts_total and _pd_meas_intensity_total were both supplied, but with different values." );
+                    counts.push_back( next_batch[ _pd_meas_counts_total_index ] );
+                }
             }
+            if ( ! ring_buffer.empty() )
+                std::cout << "PowderPattern::read_cif(): Warning: ring buffer not empty." << std::endl;
             continue;
         }
     }
@@ -193,10 +244,9 @@ PowderPattern read_cif( const FileName & file_name )
     Angle two_theta_step_should_be = ( two_theta_end - two_theta_start ) / ( counts.size() - 1 );
     std::cout << "two_theta_step_should_be = " << two_theta_step_should_be << std::endl;
     std::cout << "two_theta_step           = " << two_theta_step << std::endl;
-    // @@ This is a poor algorithm: two_theta_step was probably rounded and we need the exact value.
     for ( size_t i( 0 ); i != counts.size(); ++i )
     {
-        result.push_back( ( i * two_theta_step_should_be ) + two_theta_start, counts[ i ] );
+        result.push_back( two_theta_start + ( ( i * ( two_theta_end - two_theta_start ) ) / ( counts.size() - 1 ) ), counts[ i ] );
     }
     return result;
 }
