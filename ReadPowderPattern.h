@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class PowderPattern;
 class FileName;
 
+
+// First, the user must change .brml to .zip and extract all files.
+// Then we must read the RawData0.xml file.
 PowderPattern read_brml( const FileName & file_name );
+
 PowderPattern read_cif( const FileName & file_name );
 PowderPattern read_dat( const FileName & file_name );
 PowderPattern read_mdi( const FileName & file_name );
