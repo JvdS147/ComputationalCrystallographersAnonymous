@@ -36,9 +36,36 @@ void test_Stack( TestSuite & test_suite )
     std::cout << "Now running tests for Stack." << std::endl;
 
     {
-  //  Stack dummy();
-  //  test_suite.test_equality( dummy, , "Stack()" );
+    Stack< size_t > dummy;
+    test_suite.test_equality( dummy.empty(), true, "Stack 01" );
+    dummy.push( 5 );
+    test_suite.test_equality( dummy.empty(), false, "Stack 02" );
+    test_suite.test_equality( dummy.peek(), 5, "Stack 03" );
+    test_suite.test_equality( dummy.stack_pointer(), 1, "Stack 04" );
+    test_suite.test_equality( dummy.pop(), 5, "Stack 05" );
+    test_suite.test_equality( dummy.stack_pointer(), 0, "Stack 06" );
     }
-
+    {
+        try
+        {
+        Stack< size_t > dummy;
+        dummy.pop();
+        test_suite.log_error( "Stack::pop() should have thrown 01" );
+        }
+        catch ( std::exception & e )
+        {
+        }
+    }
+    {
+        try
+        {
+        Stack< size_t > dummy;
+        dummy.peek();
+        test_suite.log_error( "Stack::peek() should have thrown 01" );
+        }
+        catch ( std::exception & e )
+        {
+        }
+    }
 }
 

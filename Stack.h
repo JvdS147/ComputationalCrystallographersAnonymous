@@ -39,7 +39,7 @@ class Stack
 {
 public:
 
-    // Default constructor
+    // Default constructor.
     Stack():sp_(0) {}
     
     bool empty() const { return ( sp_ == 0 ); }

@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 #include <vector>
 
+#include <iostream> // for debugging
+
 /*
   A ring buffer. Writing appends at the end, reading reads from the front.
   @@@ Size should really be infinite, but that requires a bit of programming.
@@ -42,20 +44,15 @@ public:
 
     RingBuffer( const size_t maximum_size )
     : maximum_size_(maximum_size),
-    head_(0),
-    tail_(0)
+    tail_(0),
+    current_size_(0)
     {
         if ( maximum_size == 0 )
             throw std::runtime_error( "RingBuffer::RingBuffer(): maximum size cannot be zero." );
         data_.reserve( maximum_size );
     }
 
-    size_t size() const
-    {
-        if ( head_ < tail_ )
-            return maximum_size_ - tail_ + head_;
-        return head_ - tail_;
-    }
+    size_t size() const { return current_size_; }
 
     bool empty() const { return ( size() == 0 ); }
 
@@ -66,7 +63,10 @@ public:
         if ( empty() )
             throw std::runtime_error( "RingBuffer::read(): buffer is empty." );
         T result = data_[ tail_ ];
-        cyclic_increment( tail_ );
+        ++tail_;
+        if ( tail_ == maximum_size_ )
+            tail_ = 0;
+        --current_size_;
         return result;
     }
 
@@ -76,28 +76,20 @@ public:
             throw std::runtime_error( "RingBuffer::write(): buffer is full." );
         if ( data_.size() < maximum_size_ )
         {
-            if ( data_.size() != head_ )
+            if ( data_.size() != ( ( tail_ + current_size_ ) % maximum_size_ ) )
                 throw std::runtime_error( "RingBuffer::write(): programming error." );
             data_.push_back( t );
         }
         else
-            data_[ head_ ] = t;
-        cyclic_increment( head_ );
+            data_[ ( tail_ + current_size_ ) % maximum_size_ ] = t;
+        ++current_size_;
     }
 
 private:
     std::vector< T > data_;
     size_t maximum_size_;
-    size_t head_;
     size_t tail_;
-
-    void cyclic_increment( size_t & i )
-    {
-    if ( i == ( maximum_size_ - 1 ) )
-        i = 0;
-    else
-        ++i;
-    }
+    size_t current_size_;
 
 };
 

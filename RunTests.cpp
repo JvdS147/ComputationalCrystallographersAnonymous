@@ -57,9 +57,11 @@ void run_tests()
         test_PowderPattern( test_suite );
         test_quaternion( test_suite );
         test_ReadCell( test_suite );
+        test_RingBuffer( test_suite );
         test_sort( test_suite );
         test_space_group( test_suite );
         test_SphericalHarmonics( test_suite );
+        test_Stack( test_suite );
         test_StringFunctions( test_suite );
         test_StringConversions( test_suite );
         test_SudokuSolver( test_suite );
