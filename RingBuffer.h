@@ -75,11 +75,7 @@ public:
         if ( full() )
             throw std::runtime_error( "RingBuffer::write(): buffer is full." );
         if ( data_.size() < maximum_size_ )
-        {
-            if ( data_.size() != ( ( tail_ + current_size_ ) % maximum_size_ ) )
-                throw std::runtime_error( "RingBuffer::write(): programming error." );
             data_.push_back( t );
-        }
         else
             data_[ ( tail_ + current_size_ ) % maximum_size_ ] = t;
         ++current_size_;

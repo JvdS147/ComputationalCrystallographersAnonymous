@@ -43,8 +43,6 @@ void test_RingBuffer( TestSuite & test_suite )
     test_suite.test_equality( dummy.read(), 5, "RingBuffer 03" );
     test_suite.test_equality( dummy.size(), 0, "RingBuffer 04" );
     }
-std::cout << "I got here 1" << std::endl;
-
     {
         try
         {
@@ -56,7 +54,6 @@ std::cout << "I got here 1" << std::endl;
         {
         }
     }
-std::cout << "I got here 2" << std::endl;
     {
         try
         {
@@ -67,7 +64,6 @@ std::cout << "I got here 2" << std::endl;
         {
         }
     }
-std::cout << "I got here 3" << std::endl;
     {
         RingBuffer< size_t > dummy( 10 );
         dummy.write(  1 );
