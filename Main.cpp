@@ -30,6 +30,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // The following is allowed:
 // Copy the source code for free, change the source code, compile the source code, sell the compiled code for money. As long as C. J. van de Streek is acknowledged and is not used to endorse the new code.
 
+/*
+    In order to use this code:
+    - Go to the line "int main( int argc, char** argv )" near line number 275.
+    - Skip the nine lines running the tests.
+    - Copy the algorithm that you need to follow immediately after the tests. Each algorithm starts with:
+
+    try // Comment explaining what this algorithm does.
+
+    - each algorithm ends with:
+
+    MACRO_END_GAME
+
+    - Then compile the code for example in Dev-C++ or using gcc:
+
+    g++ -ansi -O2 -o CCA.exe *.cpp
+
+    This produces an executable CCA.exe .
+*/
+
 #include "3DCalculations.h"
 #include "AddClass.h"
 #include "AnalyseRings.h"
@@ -82,6 +101,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ReadCell.h"
 #include "ReadCif.h"
 #include "ReadCifOrCell.h"
+#include "ReadPowderPattern.h"
 #include "ReadXSD.h"
 #include "ReadXYZ.h"
 #include "RealisticXRPDSimulator.h"
@@ -168,8 +188,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         if ( argc != 2 ) \
             throw std::runtime_error( "Please give the name of a .xye file." ); \
         FileName input_file_name( argv[ 1 ] ); \
-        PowderPattern powder_pattern; \
-        powder_pattern.read_xye( input_file_name );
+        PowderPattern powder_pattern( input_file_name );
 
 // Test if .h files compile stand alone.
 // FractionalCoordinate / OrthonormalCoordinate.
@@ -225,7 +244,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // We currently never check if a determinant for a transformation is negative. Should allow this but should give warning. I think this is wrong:
 //    we check in CrystalLattice.transform(), and that is always used, and there a warning is written out.
 //    but we currently throw in add_centring_to_space_group_after_transformation().
-// The whole Wavelength class must be reprogrammed to store an enum for synchrotron or one of the five lab sources and with or without monochromator.
 // In ListOfDoubles: boundary checking for access.
 // In ListOfDoubles: implement +=.
 // Eulerian_angles() should use the EulerianAngles class.
@@ -260,6 +278,8 @@ std::string disordered_identifier_to_refcode( const std::string & input )
 int main( int argc, char** argv )
 {
 
+    if ( true )
+    {
     try // Run tests.
     {
         run_tests();
@@ -269,8 +289,503 @@ int main( int argc, char** argv )
         std::cout << "An exception was thrown" << std::endl;
         std::cout << e.what() << std::endl;
     }
+    }
 
-    try // Loop over all space groups to test constraints.
+    try // Average overlapping atoms, e.g. after adding a symmetry element that had been missed.
+    {
+        MACRO_ONE_CIFFILENAME_AS_ARGUMENT
+        double tolerance = 0.5; // in Angstrom.
+        double tolerance2 = square( tolerance );
+        // We expect *every* atom to have the same number of matches. An atom on a special position has a number of matches equal to the order of the point group of the special position.
+        std::vector< size_t > nmatches( crystal_structure.natoms(), 0 );
+        std::vector< size_t > order_of_special_position( crystal_structure.natoms(), 1 ); // 1 = general position.
+        for ( size_t iAtom( 0 ); iAtom != crystal_structure.natoms(); ++iAtom )
+        {
+            // Is this atom on a special position?
+            Vector3D position = crystal_structure.atom( iAtom ).position();
+            // On return, position is moved to the exact special position, if applicable.
+            PointGroup point_group = crystal_structure.point_is_on_special_position( position, tolerance );
+            if ( point_group.nsymmetry_operators() != 1 )
+            {
+                order_of_special_position[ iAtom ] = point_group.nsymmetry_operators();
+                Atom atom = crystal_structure.atom( iAtom );
+                atom.set_position( position );
+                crystal_structure.set_atom( iAtom, atom );
+            }
+        }
+        // There may be an atom that is on a special position so it is not guaranteed that the number of atoms must be even.
+        std::vector< bool > done( crystal_structure.natoms(), false );
+        std::vector< bool > to_be_kept( crystal_structure.natoms(), false );
+        for ( size_t iAtom( 0 ); iAtom != crystal_structure.natoms(); ++iAtom )
+        {
+            if ( done[ iAtom ] )
+                continue;
+            done[ iAtom ] = true;
+            to_be_kept[ iAtom ] = true;
+            // Loop over all other atom and find matches.
+            Vector3D average_position;
+            size_t sum_of_weights = order_of_special_position[ iAtom ];
+            for ( size_t jAtom( iAtom+1 ); jAtom != crystal_structure.natoms(); ++jAtom )
+            {
+                if ( done[ jAtom ] )
+                    continue;
+                if ( crystal_structure.shortest_distance2( crystal_structure.atom( iAtom ).position(), crystal_structure.atom( jAtom ).position() ) < tolerance2 )
+                {
+                    if ( crystal_structure.atom( iAtom ).element() != crystal_structure.atom( jAtom ).element() )
+                    {
+                        std::cout << crystal_structure.atom( iAtom ).label() << " and " << crystal_structure.atom( jAtom ).label() << " overlap but are different elements--not merged." << std::endl;
+                        continue;
+                    }
+                    done[ jAtom ] = true;
+                    // Even if an atom is on a special position, it might still be necessary to average positions, e.g. if it is on a mirror plane.
+                    if ( order_of_special_position[ iAtom ] != order_of_special_position[ jAtom ] )
+                        std::cout << crystal_structure.atom( iAtom ).label() << " and " << crystal_structure.atom( jAtom ).label() << " overlap but are on different special positions." << std::endl;
+                    double shortest_distance;
+                    Vector3D shortest_difference_vector;
+                    crystal_structure.shortest_distance( crystal_structure.atom( iAtom ).position(), crystal_structure.atom( jAtom ).position(), shortest_distance, shortest_difference_vector );
+                    average_position += order_of_special_position[ jAtom ] * shortest_difference_vector;
+                    sum_of_weights += order_of_special_position[ jAtom ];
+                }
+            }
+            average_position /= sum_of_weights;
+            nmatches[ iAtom ] = sum_of_weights;
+//            std::cout << crystal_structure.atom( iAtom ).label() << " nmatches = " << nmatches[ iAtom ] << std::endl;
+            Atom atom = crystal_structure.atom( iAtom );
+            atom.set_position( crystal_structure.atom( iAtom ).position() + average_position );
+            crystal_structure.set_atom( iAtom, atom );
+        }
+        for ( size_t iAtom( 0 ); iAtom != crystal_structure.natoms(); ++iAtom )
+        {
+            if ( ! to_be_kept[ iAtom ] )
+                crystal_structure.set_suppressed( iAtom, true );
+        }
+        crystal_structure.make_atom_labels_unique();
+        crystal_structure.save_cif( append_to_file_name( input_file_name, "_avg" ) );
+    MACRO_END_GAME
+
+    // Detect pseudo-inversion symmetry.
+    // Crude algorithm, only works if there are only two fragments in the asymmetric unit.
+    // Assumes that the first half of the atoms is one molecule in the asymmetric unit,
+    // the second half of the atoms the second molecule.
+    // The algorithm to detect floating axes works for up to and including orthorhombic, I do not know about the other space groups.
+    try
+    {
+        MACRO_ONE_CIFFILENAME_AS_ARGUMENT
+        if ( is_odd( crystal_structure.natoms() ) )
+            throw std::runtime_error( "Z' must be 2 and number of atoms must therefore be even." );
+        CrystalStructure original_crystal_structure( crystal_structure );
+        SpaceGroup original_space_group = crystal_structure.space_group();
+        bool at_least_one_floating_axis( false );
+        for ( size_t i( 0 ); i != 3; ++i )
+        {
+            if ( original_space_group.is_floating_axis( i ) )
+            {
+                std::cout << "Floating axis found " << Vector3D::index2string( i ) << std::endl;
+                at_least_one_floating_axis = true;
+            }
+        }
+        for ( size_t iSymmOp( 0 ); iSymmOp != original_space_group.nsymmetry_operators(); ++iSymmOp )
+        {
+            crystal_structure = original_crystal_structure;
+            // Split the atoms into two. Assume first half is one molecule, second half is the other.
+            // Apply each symmetry operator (including the identity) in turn to the second molecule.
+            for ( size_t i( crystal_structure.natoms() / 2 ); i != crystal_structure.natoms(); ++i )
+            {
+                Atom new_atom( crystal_structure.atom( i ) );
+                new_atom.set_position( original_space_group.symmetry_operator( iSymmOp ) * crystal_structure.atom( i ).position() );
+                if ( new_atom.ADPs_type() == Atom::ANISOTROPIC )
+                    new_atom.set_anisotropic_displacement_parameters( rotate_adps( new_atom.anisotropic_displacement_parameters(), original_space_group.symmetry_operator( iSymmOp ).rotation(), crystal_structure.crystal_lattice() ) );
+                crystal_structure.set_atom( i, new_atom );
+            }
+            SpaceGroup space_group = crystal_structure.space_group();
+            Vector3D com = crystal_structure.centre_of_mass( true );
+            std::cout << "Centre of mass = " << std::endl;
+            com.show();
+            Vector3D shift; // Floating axes are set to -(c.o.m.).
+            Vector3D translation_for_symmetry_operators; // Floating axes are set to 0.0.
+            for ( size_t i( 0 ); i != 3; ++i )
+            {
+                if ( original_space_group.is_floating_axis( i ) )
+                {
+                    shift.set_value( i, -com.value(i) );
+                }
+                else
+                {
+                    // Not a floating axis
+                    // Round to nearest 1/12
+                    Fraction granularity( 1, 12 );
+                    if ( ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::TRICLINIC ) ||
+                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_A ) ||
+                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_B ) ||
+                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_C ) ||
+                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::ORTHORHOMBIC ) )
+                        granularity = Fraction( 1, 12 );
+                    Fraction fraction = double2fraction( -com.value(i), granularity );
+                    std::cout << "Shift rounded to a fraction = " + fraction.to_string() << std::endl;
+                    shift.set_value( i, fraction.to_double() );
+                    translation_for_symmetry_operators.set_value( i, shift.value( i ) );
+                }
+            }
+            SymmetryOperator symmetry_operator( Matrix3D(), translation_for_symmetry_operators ); // "x-1/4,y,z-3/4".
+            // In Mercury, if the space-group name and the set of symmetry operators do not match up,
+            // the space-group name takes precedence, so we have to erase it to ensure that the
+            // symmetry operators are used instead.
+            space_group.set_name( "" );
+            space_group.apply_similarity_transformation( symmetry_operator );
+            space_group.add_inversion_at_origin();
+            crystal_structure.set_space_group( space_group );
+            for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
+            {
+                Atom new_atom( crystal_structure.atom( i ) );
+                new_atom.set_position( ( crystal_structure.atom( i ).position() ) + shift );
+                crystal_structure.set_atom( i, new_atom );
+            }
+            // Up to this point, the shift along any floating axis was based on the c.o.m. of the entire molecule.
+            // Some atoms will now overlap almost perfectly, those close to chiral centres will not overlap at all.
+            // The shift that we applied was distorted by these atoms near the chiral centres that do not overlap at all.
+            // Here we try to calculate better shifts, based only on the atoms that overlap well.
+            // First, this is only relevant for floating axes. Second, this will only work for one of the symmetry operators (c.f. the loop over iSymmOp).
+            // "Almost perfect overlap" should mean a small distance between atoms of the same element and only a single unambiguous match.
+            // After we have applied this better shift, some more atoms, that previously did not overlap within the tolerance because the inclusion of the atoms near
+            // the chiral centres had distorted our shift, will now suddenly also match within the tolerance, so this has to be done iteratively.
+            // (Well, strictly speaking we simply need an algorithm that mathes molecular topologies, but currently we do not even have topologies so that is not going to work).
+            // First iteration. For each atom we find the atom that is closest. Atoms with multiple matches or with no match are discarded. If the elements do not
+            // match up, then that is also fishy, so we discard those as well. From the atom pairs that are left, sort them by distance, then take the top 25% of all atoms
+            // (not just of the atoms that were left) and use those to calculate better shifts.
+            // The "25%" is configurable, and the tolerance for matching is also a parameter.
+
+            // Skip the whole exercise if there were no floating axes to start with.
+            if ( at_least_one_floating_axis )
+            {
+                double tolerance = 0.3;
+                double fraction = 0.2;
+                std::vector< bool > done( crystal_structure.natoms(), false ); // We only use the second half, but this is way easier to program.
+                std::vector< bool > is_dodgy( crystal_structure.natoms() / 2, false );
+                std::vector< size_t > best_matches( crystal_structure.natoms() / 2, 0 );
+                std::vector< double > best_distances( crystal_structure.natoms() / 2, 0.0 );
+                for ( size_t iAtom1( 0 ); iAtom1 != crystal_structure.natoms() / 2; ++iAtom1 )
+                {
+                    size_t best_match = crystal_structure.natoms() / 2;
+                    double best_distance = crystal_structure.crystal_lattice().shortest_distance( crystal_structure.atom( iAtom1 ).position(), crystal_structure.atom( best_match ).position() );
+                    for ( size_t iAtom2( ( crystal_structure.natoms() / 2 ) + 1 ); iAtom2 != crystal_structure.natoms(); ++iAtom2 )
+                    {
+                        double distance = crystal_structure.crystal_lattice().shortest_distance( crystal_structure.atom( iAtom1 ).position(), -crystal_structure.atom( iAtom2 ).position() );
+                        if ( distance < best_distance )
+                        {
+                            best_distance = distance;
+                            best_match = iAtom2;
+                        }
+                    }
+                    best_matches[ iAtom1 ] = best_match;
+                    best_distances[ iAtom1 ] = best_distance;
+                    if ( best_distance > tolerance )
+                        is_dodgy[ iAtom1 ] = true;
+                    if ( done[ best_match ] )
+                    {
+                        // This iAtom2 has more than one match-all pairs involving it are dodgy.
+                        for ( size_t i( 0 ); i != iAtom1 + 1; ++i )
+                        {
+                            if ( best_matches[ i ] == best_match )
+                                is_dodgy[ i ] = true;
+                        }
+                    }
+                    else
+                    {
+                        // Unique match. Check the elements.
+                        if ( crystal_structure.atom( iAtom1 ).element() != crystal_structure.atom( best_match ).element() )
+                            is_dodgy[ iAtom1 ] = true;
+                        done[ best_match ] = true;
+                    }
+                }
+                // Remove dodgy matches.
+                std::vector< size_t > atoms_1;
+                std::vector< size_t > atoms_2;
+                std::vector< double > distances;
+                for ( size_t i( 0 ); i != crystal_structure.natoms() / 2; ++i )
+                {
+                    if ( ! is_dodgy[ i ] )
+                    {
+                        atoms_1.push_back( i );
+                        atoms_2.push_back( best_matches[ i ] );
+                        distances.push_back( best_distances[ i ] );
+                    }
+                }
+                // Has at least 25% survived?
+                if ( ( static_cast<double>( atoms_1.size() ) / ( crystal_structure.natoms() / 2.0 ) ) > fraction )
+                {
+                    // Calculate the c.o.m.. based only on the atoms that match very well.
+                    // We have two choices here: either we only use the top 25% of the matches
+                    // (which must all match within tolerance), assuming that they
+                    // yield the best value possible, or we use all matches up to a certain distance.
+                    // We just use all of them and we do not do any iterations.
+                    Vector3D com_2;
+                    for ( size_t i( 0 ); i != atoms_1.size(); ++i )
+                    {
+                        com_2 += crystal_structure.atom( atoms_1[ i ] ).position();
+                        com_2 += crystal_structure.atom( atoms_2[ i ] ).position();
+                    }
+                    com_2 /= ( atoms_1.size() * 2.0 );
+                    std::cout << "Refined centre of mass = " << std::endl;
+                    com_2.show();
+                    Vector3D shift_2; // Floating axes are set to -(c.o.m.).
+                    for ( size_t i( 0 ); i != 3; ++i )
+                    {
+                        if ( original_space_group.is_floating_axis( i ) )
+                            shift_2.set_value( i, -com_2.value(i) );
+                    }
+                    for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
+                    {
+                        Atom new_atom( crystal_structure.atom( i ) );
+                        new_atom.set_position( ( crystal_structure.atom( i ).position() ) + shift_2 );
+                        crystal_structure.set_atom( i, new_atom );
+                    }
+                }
+            }
+            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse" ) );
+            for ( size_t i( crystal_structure.natoms() / 2 ); i != crystal_structure.natoms(); ++i )
+                crystal_structure.set_suppressed( i, true );
+            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse_1" ) );
+            for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
+                crystal_structure.set_suppressed( i, !crystal_structure.suppressed( i ) );
+            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse_2" ) );
+        }
+    MACRO_END_GAME
+
+    try // Simulate a realistic experimental powder diffraction pattern.
+    {
+        MACRO_ONE_CIFFILENAME_AS_ARGUMENT
+        crystal_structure.apply_space_group_symmetry();
+        bool save_all_for_debugging( true );
+        RealisticXRPDSimulatorSettings settings;
+        settings.set_wavelength( Wavelength() );
+        settings.set_two_theta_start( Angle( 10.0, Angle::DEGREES ) );
+        settings.set_two_theta_end( Angle( 90.0, Angle::DEGREES ) );
+        settings.set_two_theta_step( Angle( 0.444, Angle::DEGREES ) );
+        settings.set_FWHM( 0.1 );
+        settings.set_zero_point_error( Angle( 0.02, Angle::DEGREES ) );
+        if ( true )
+            settings.set_preferred_orientation( select_realistic_preferred_orientation_direction( crystal_structure.crystal_lattice() ), 0.9 );
+        if ( true )
+            settings.set_finger_cox_jephcoat( 10.0 / 400.0, 10.0 / 400.0 );
+        if ( true )
+            settings.set_anisotropic_peak_broadening( 1.0 );
+        settings.set_include_background( true );
+        settings.set_include_noise( true );
+        settings.set_include_noise_for_zero_background( 20 );
+        settings.set_Bragg_total_signal_normalisation( 10000.0 );
+        settings.set_background_total_signal_normalisation( 10000.0 );
+        settings.set_highest_peak( 10000.0 );
+        RealisticXRPDSimulator realistic_XRPD_simulator( crystal_structure, settings );
+        PowderPattern powder_pattern = realistic_XRPD_simulator.calculate();
+        if ( save_all_for_debugging )
+            realistic_XRPD_simulator.Bragg_diffraction().save_xye( replace_extension( append_to_file_name( input_file_name, "_Bragg" ), "xye" ), true );
+        if ( save_all_for_debugging )
+            realistic_XRPD_simulator.background().save_xye( replace_extension( append_to_file_name( input_file_name, "_background" ), "xye" ), true );
+        if ( save_all_for_debugging )
+            realistic_XRPD_simulator.noise().save_xye( replace_extension( append_to_file_name( input_file_name, "_noise" ), "xye" ), true );
+        // A second one for the NaCl.
+        if ( false )
+        {
+            CrystalStructure crystal_structure_NaCl = NaCl();
+            crystal_structure_NaCl.apply_space_group_symmetry();
+            RealisticXRPDSimulatorSettings settings_NaCl( settings );
+            settings_NaCl.set_FWHM( 0.1 );
+            settings_NaCl.unset_preferred_orientation();
+            settings_NaCl.set_include_background( false );
+            settings_NaCl.set_Bragg_total_signal_normalisation( 0.02 * settings.Bragg_total_signal_normalisation() );
+            RealisticXRPDSimulator realistic_XRPD_simulator_NaCl( crystal_structure_NaCl, settings_NaCl );
+            PowderPattern powder_pattern_NaCl = realistic_XRPD_simulator_NaCl.calculate();
+            powder_pattern_NaCl.scale( realistic_XRPD_simulator.scale_factor() / realistic_XRPD_simulator_NaCl.scale_factor() );
+            powder_pattern_NaCl.make_counts_integer();
+            powder_pattern_NaCl.recalculate_estimated_standard_deviations();
+            if ( save_all_for_debugging )
+                powder_pattern_NaCl.save_xye( replace_extension( append_to_file_name( input_file_name, "_NaCl" ), "xye" ), true );
+            powder_pattern += powder_pattern_NaCl;
+        }
+        powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
+        settings.save( replace_extension( input_file_name, "txt" ) );
+        if ( false )
+        {
+            PowderPattern estimated_background = calculate_Brueckner_background( powder_pattern,
+                                                                                 50, // niterations
+                                                                                 round_to_int( 50.0 * ( Angle::from_degrees( 0.015 ) / powder_pattern.average_two_theta_step() ) ), // window
+                                                                                 true, // apply_smoothing
+                                                                                 5 ); // smoothing_window
+            if ( save_all_for_debugging )
+                estimated_background.save_xye( replace_extension( append_to_file_name( input_file_name, "_Brueckner_BKGR" ), "xye" ), true );
+            powder_pattern -= estimated_background;
+            powder_pattern.save_xye( replace_extension( append_to_file_name( input_file_name, "_Brueckner_BKGR_subtracted" ), "xye" ), true );
+        }
+    MACRO_END_GAME
+
+    try // Loop over all space groups to test floating axes.
+    {
+        TextFileReader_2 input_file( FileName( "space_groups.cif" ) );
+        if ( input_file.size() != 8979 )
+            throw std::runtime_error( "read_cif(): symmetry line must have same number of items as specified in loop." );
+        size_t iLine( 0 );
+        std::vector< std::string > words;
+        // The seven R-centred space groups are present as R-cented and as primitive in a rhombohedral unit cell.
+        for ( size_t i( 0 ); i != 237; ++i )
+        {
+            std::string space_group_name = input_file.line( iLine ).substr( 5 );
+            space_group_name = space_group_name.substr( 0, space_group_name.find_first_of( "(" ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double a = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double b = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            double c = string2double( words[1] );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle alpha = Angle::from_degrees( string2double( words[1] ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle beta = Angle::from_degrees( string2double( words[1] ) );
+            ++iLine;
+            words = split( input_file.line( iLine ) );
+            Angle gamma = Angle::from_degrees( string2double( words[1] ) );
+            CrystalLattice crystal_lattice( a, b, c, alpha, beta, gamma );
+            iLine += 3;
+            std::vector< SymmetryOperator > symmetry_operators;
+            bool finished( false );
+            do // Read the symmetry operators.
+            {
+                words = split( input_file.line( iLine ) );
+                if ( ( words[0][0] == '_' ) || ( words[0] == "loop_" ) )
+                {
+                    finished = true;
+                }
+                else
+                {
+                    if ( words.size() != 1 )
+                        throw std::runtime_error( "read_cif(): symmetry line must have same number of items as specified in loop." );
+                    SymmetryOperator symmetry_operator( words[0] );
+                    symmetry_operators.push_back( symmetry_operator );
+                    ++iLine;
+                }
+            } while ( ! finished );
+            SpaceGroup space_group( symmetry_operators, space_group_name );
+            if ( crystal_lattice.lattice_system() == CrystalLattice::RHOMBOHEDRAL )
+            {
+                std::cout << "######################################" << std::endl;
+                std::cout << "Original:" << std::endl;
+                std::cout << space_group_name << std::endl;
+                space_group.show();
+                crystal_lattice.print();
+           //     Matrix3D transformation = space_group.centring().to_primitive();
+      //          CrystalStructure crystal_structure;
+      //          crystal_structure.set_crystal_lattice( crystal_lattice );
+      //          crystal_structure.set_space_group( space_group );
+      //          crystal_structure.add_atom( Atom( Element( "C" ), Vector3D( 0.217391, 0.304348, 0.565217), std::string( "C1" ) ) );
+        //        crystal_structure.save_cif( FileName( space_group_name + "_H.cif" ) );
+       //         std::cout << "Primitive:" << std::endl;
+   //             crystal_structure.reduce_to_primitive();
+    //            crystal_structure.crystal_lattice().print();
+    //            crystal_structure.space_group().show();
+    //            crystal_structure.save_cif( FileName( space_group_name + "_R.cif" ) );
+//                crystal_structure.convert_to_P1();
+//                crystal_structure.save_cif( FileName( space_group_name + "_P1.cif" ) );
+                if ( space_group.has_inversion() )
+                    std::cout << "Space group has an inversion." << std::endl;
+                else
+                {
+                    Matrix3D sum;
+                    for ( size_t j( 1 ); j != space_group.nrepresentative_symmetry_operators(); ++j )
+                        sum += space_group.representative_symmetry_operator( j ).rotation();
+                    sum /= space_group.nrepresentative_symmetry_operators();
+                    sum.show();
+                }
+            }
+            iLine += 10;
+        }
+    MACRO_END_GAME
+
+    try // Find unit-cell transformation.
+    {
+        if ( argc != 3 )
+            throw std::runtime_error( "Please give the name of two .cif files, the second is the target." );
+        FileName input_file_name( argv[ 1 ] );
+        CrystalStructure crystal_structure;
+        read_cif_or_cell( input_file_name, crystal_structure );
+        CrystalLattice old_crystal_lattice = crystal_structure.crystal_lattice();
+        FileName file_name_2( argv[ 2 ] );
+        CrystalStructure crystal_structure_2;
+        read_cif_or_cell( file_name_2, crystal_structure_2 );
+        CrystalLattice target_crystal_lattice = crystal_structure_2.crystal_lattice();
+        double determinant = target_crystal_lattice.volume() / old_crystal_lattice.volume();
+        Fraction fraction = Farey( determinant, 8 );
+        determinant = fraction.to_double();
+        std::cout << "Determinant = " << determinant << std::endl;
+        if ( determinant + 0.000001 < 1.0 )
+            throw std::runtime_error( "The determinant is < 1, that is not possible with the current algorithm." );
+        double length_tolerance_percent( 10.0 );
+        Angle angle_tolerance = Angle::from_degrees( 10.0 );
+        double best_FoM( 1000000.0 );
+        Matrix3D best_transformation_matrix;
+        int limit = 3;
+        for ( int i1( -limit ); i1 != limit+1; ++i1 )
+        {
+            std::cout << " ." << std::endl;
+        for ( int i2( -limit ); i2 != limit+1; ++i2 )
+        {
+            std::cout << " .." << std::endl;
+        for ( int i3( -limit ); i3 != limit+1; ++i3 )
+        {
+            for ( int j1( -limit ); j1 != limit+1; ++j1 )
+            {
+            for ( int j2( -limit ); j2 != limit+1; ++j2 )
+            {
+            for ( int j3( -limit ); j3 != limit+1; ++j3 )
+            {
+                for ( int k1( -limit ); k1 != limit+1; ++k1 )
+                {
+                for ( int k2( -limit ); k2 != limit+1; ++k2 )
+                {
+                for ( int k3( -limit ); k3 != limit+1; ++k3 )
+                {
+                    Matrix3D transformation_matrix( i1, i2, i3, j1, j2, j3, k1, k2, k3 );
+                    if ( ! nearly_equal( transformation_matrix.determinant(), determinant ) )
+                        continue;
+                    // Make a copy.
+                    CrystalLattice new_lattice( old_crystal_lattice );
+                    new_lattice.transform( transformation_matrix );
+                    if ( ! nearly_equal( new_lattice, target_crystal_lattice, length_tolerance_percent, angle_tolerance ) )
+                        continue;
+                    {
+                        double FoM = ((target_crystal_lattice.a_vector()+target_crystal_lattice.b_vector()+target_crystal_lattice.c_vector()) - (new_lattice.a_vector()+new_lattice.b_vector()+new_lattice.c_vector())).length();
+                        transformation_matrix.show();
+                        std::cout << "Inverse =" << std::endl;
+                        inverse( transformation_matrix ).show();
+                        new_lattice.print();
+                        std::cout << "FoM = " << FoM << std::endl;
+                        std::cout << std::endl;
+                        if ( FoM < best_FoM )
+                        {
+                            best_FoM = FoM;
+                            best_transformation_matrix = transformation_matrix;
+                        }
+                    }
+                }
+                }
+                }
+            }
+            }
+            }
+        }
+        }
+        }
+        crystal_structure.transform( best_transformation_matrix );
+        SpaceGroup space_group = crystal_structure.space_group();
+        space_group.set_name( "" );
+        crystal_structure.set_space_group( space_group );
+        crystal_structure.save_cif( replace_extension( append_to_file_name( input_file_name, "_transformed" ) , "cif" ) );
+    MACRO_END_GAME
+
+    try // Loop over all space groups to test if all space groups can be inverted by multiplying by -x,-y,-z (answer: no).
     {
         TextFileReader_2 input_file( FileName( "IT.cif" ) );
         if ( input_file.size() != 8795 )
@@ -899,15 +1414,6 @@ int main( int argc, char** argv )
             std::cout << "Inverse transformation matrix:" << std::endl;
             std::cout << inverse( tranformation_matrix ) << std::endl;
         }
-        if ( (false) )
-        {
-            SymmetryOperator symmetry_operator( "x,y+1/4,z" );
-            SpaceGroup space_group = crystal_structure.space_group();
-            space_group.set_name( "" );
-            space_group.apply_similarity_transformation( symmetry_operator );
-         //   space_group.add_inversion_at_origin();
-            crystal_structure.set_space_group( space_group );
-        }
         Matrix3D rotation(  1.0,  0.0,  0.0,
                             0.0,  1.0,  0.0,
                             0.0,  0.0,  1.0 );
@@ -950,71 +1456,6 @@ int main( int argc, char** argv )
             crystal_structure.set_space_group( space_group );
         }
         crystal_structure.save_cif( replace_extension( append_to_file_name( input_file_name, "_transformed" ), "cif" ) );
-    MACRO_END_GAME
-
-    try // Simulate a realistic experimental powder diffraction pattern.
-    {
-        MACRO_ONE_CIFFILENAME_AS_ARGUMENT
-        crystal_structure.apply_space_group_symmetry();
-        bool save_all_for_debugging( true );
-        RealisticXRPDSimulatorSettings settings;
-        settings.set_wavelength( Wavelength() );
-        settings.set_two_theta_start( Angle( 2.0, Angle::DEGREES ) );
-        settings.set_two_theta_end( Angle( 40.0, Angle::DEGREES ) );
-        settings.set_two_theta_step( Angle( 0.015, Angle::DEGREES ) );
-        settings.set_FWHM( 0.1 );
-        settings.set_zero_point_error( Angle( 0.02, Angle::DEGREES ) );
-        if ( true )
-            settings.set_preferred_orientation( select_realistic_preferred_orientation_direction( crystal_structure.crystal_lattice() ), 0.9 );
-        if ( true )
-            settings.set_finger_cox_jephcoat( 10.0 / 400.0, 10.0 / 400.0 ); // Finger-Cox-Jephcoat
-        settings.set_include_background( true );
-        settings.set_include_noise( true );
-        settings.set_include_noise_for_zero_background( 20 );
-        settings.set_Bragg_total_signal_normalisation( 10000.0 );
-        settings.set_background_total_signal_normalisation( 0.2*10000.0 );
-        settings.set_highest_peak( 10000.0 );
-        RealisticXRPDSimulator realistic_XRPD_simulator( crystal_structure, settings );
-        PowderPattern powder_pattern = realistic_XRPD_simulator.calculate();
-        if ( save_all_for_debugging )
-            realistic_XRPD_simulator.Bragg_diffraction().save_xye( replace_extension( append_to_file_name( input_file_name, "_Bragg" ), "xye" ), true );
-        if ( save_all_for_debugging )
-            realistic_XRPD_simulator.background().save_xye( replace_extension( append_to_file_name( input_file_name, "_background" ), "xye" ), true );
-        if ( save_all_for_debugging )
-            realistic_XRPD_simulator.noise().save_xye( replace_extension( append_to_file_name( input_file_name, "_noise" ), "xye" ), true );
-        // A second one for the NaCl.
-        if ( false )
-        {
-            CrystalStructure crystal_structure_NaCl = NaCl();
-            crystal_structure_NaCl.apply_space_group_symmetry();
-            RealisticXRPDSimulatorSettings settings_NaCl( settings );
-            settings_NaCl.set_FWHM( 0.1 );
-            settings_NaCl.unset_preferred_orientation();
-            settings_NaCl.set_include_background( false );
-            settings_NaCl.set_Bragg_total_signal_normalisation( 0.02 * settings.Bragg_total_signal_normalisation() );
-            RealisticXRPDSimulator realistic_XRPD_simulator_NaCl( crystal_structure_NaCl, settings_NaCl );
-            PowderPattern powder_pattern_NaCl = realistic_XRPD_simulator_NaCl.calculate();
-            powder_pattern_NaCl.scale( realistic_XRPD_simulator.scale_factor() / realistic_XRPD_simulator_NaCl.scale_factor() );
-            powder_pattern_NaCl.make_counts_integer();
-            powder_pattern_NaCl.recalculate_estimated_standard_deviations();
-            if ( save_all_for_debugging )
-                powder_pattern_NaCl.save_xye( replace_extension( append_to_file_name( input_file_name, "_NaCl" ), "xye" ), true );
-            powder_pattern += powder_pattern_NaCl;
-        }
-        powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
-        settings.save( replace_extension( input_file_name, "txt" ) );
-        if ( false )
-        {
-            PowderPattern estimated_background = calculate_Brueckner_background( powder_pattern,
-                                                                                 50, // niterations
-                                                                                 round_to_int( 50.0 * ( Angle::from_degrees( 0.015 ) / powder_pattern.average_two_theta_step() ) ), // window
-                                                                                 true, // apply_smoothing
-                                                                                 5 ); // smoothing_window
-            if ( save_all_for_debugging )
-                estimated_background.save_xye( replace_extension( append_to_file_name( input_file_name, "_Brueckner_BKGR" ), "xye" ), true );
-            powder_pattern -= estimated_background;
-            powder_pattern.save_xye( replace_extension( append_to_file_name( input_file_name, "_Brueckner_BKGR_subtracted" ), "xye" ), true );
-        }
     MACRO_END_GAME
 
     try // Supercell with and without original space group.
@@ -1117,8 +1558,7 @@ int main( int argc, char** argv )
         std::vector< FileName > input_file_names = sort_file_names_by_extension( argc, argv, extensions );
         CrystalStructure crystal_structure;
         read_cif( input_file_names[0], crystal_structure );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( input_file_names[1] );
+        PowderPattern powder_pattern( input_file_names[1] );
         TextFileWriter text_file_writer( replace_extension( input_file_names[1], "inp" ) );
         write_preamble( text_file_writer );
         size_t nbackground_terms = 20;
@@ -1225,8 +1665,7 @@ int main( int argc, char** argv )
         if ( argc != 4 )
             throw std::runtime_error( "Please give the name of a .xye file and the number of patterns it has to be split into and a .cif file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( input_file_name );
+        PowderPattern powder_pattern( input_file_name );
         size_t n = string2integer( argv[ 2 ] );
         FileName input_cif_file_name( argv[ 3 ] );
         CrystalStructure crystal_structure;
@@ -1343,8 +1782,7 @@ int main( int argc, char** argv )
         read_cif( input_file_names[0], crystal_structure_1 );
         CrystalStructure crystal_structure_2;
         read_cif( input_file_names[1], crystal_structure_2 );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( input_file_names[2] );
+        PowderPattern powder_pattern( input_file_names[2] );
         TextFileWriter text_file_writer( replace_extension( input_file_names[2], "inp" ) );
         write_preamble( text_file_writer );
         size_t nbackground_terms = 20;
@@ -1570,8 +2008,7 @@ int main( int argc, char** argv )
         if ( argc != 2 )
             throw std::runtime_error( "Please give the name of a .cif file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_cif( input_file_name );
+        PowderPattern powder_pattern = read_cif( input_file_name );
         powder_pattern.set_wavelength( Wavelength::determine_from_wavelength( 0.81906 ) );
         powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
     MACRO_END_GAME
@@ -1602,8 +2039,7 @@ int main( int argc, char** argv )
             throw std::runtime_error( "Please give the name of a powder diffraction pattern and a zero-point error." );
         }
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( input_file_name );
+        PowderPattern powder_pattern( input_file_name );
         Angle zero_point_error = Angle::from_degrees( string2double( argv[ 2 ] ) );
         powder_pattern.correct_zero_point_error( zero_point_error );
         powder_pattern.save_xye( append_to_file_name( input_file_name, "_zp" ), true );
@@ -1623,8 +2059,7 @@ int main( int argc, char** argv )
         if ( argc != 3 )
             throw std::runtime_error( "Please give the name of a .xye file and the new bin size." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( input_file_name );
+        PowderPattern powder_pattern( input_file_name );
         size_t bin_size = string2integer( argv[ 2 ] );
         powder_pattern.rebin( bin_size );
         powder_pattern.save_xye( append_to_file_name( input_file_name, "_rebin_" + size_t2string( bin_size ) ), true );
@@ -1856,8 +2291,7 @@ int main( int argc, char** argv )
         std::vector< double > noscp2ts;
         for ( size_t i( 0 ); i != input_file_names.size(); ++i )
         {
-            PowderPattern powder_pattern;
-            powder_pattern.read_xye( input_file_names[i] );
+            PowderPattern powder_pattern( input_file_names[i] );
             powder_patterns.push_back( powder_pattern );
             noscp2ts.push_back( 1.0 );
         }
@@ -2078,7 +2512,7 @@ int main( int argc, char** argv )
         std::vector< double > voids_volumes_per_Z;
         for ( size_t i( 0 ); i != nfiles; ++i )
         {
-            // round_to_int( molecular_volumes[i] / smallest_molecular_volume ) = Z'
+            // round_to_int( molecular_volumes[i] / smallest_molecular_volume ) = Z'.
             voids_volumes_per_Z.push_back( total_voids_volumes_per_symmetry_operator[i] / round_to_int( molecular_volumes[i] / smallest_molecular_volume ) );
         }
         Mapping sorted_map = sort( voids_volumes_per_Z );
@@ -2434,87 +2868,6 @@ int main( int argc, char** argv )
         }
     MACRO_END_GAME
 
-    try // Find unit-cell transformation.
-    {
-        if ( argc != 3 )
-            throw std::runtime_error( "Please give the name of two .cif files, the second is the target." );
-        FileName input_file_name( argv[ 1 ] );
-        CrystalStructure crystal_structure;
-        read_cif_or_cell( input_file_name, crystal_structure );
-        CrystalLattice old_crystal_lattice = crystal_structure.crystal_lattice();
-        FileName file_name_2( argv[ 2 ] );
-        CrystalStructure crystal_structure_2;
-        read_cif_or_cell( file_name_2, crystal_structure_2 );
-        CrystalLattice target_crystal_lattice = crystal_structure_2.crystal_lattice();
-        double determinant = target_crystal_lattice.volume() / old_crystal_lattice.volume();
-        Fraction fraction = Farey( determinant, 8 );
-        determinant = fraction.to_double();
-        std::cout << "Determinant = " << determinant << std::endl;
-        if ( determinant + 0.000001 < 1.0 )
-            throw std::runtime_error( "The determinant is < 1, that is not possible with the current algorithm." );
-        double length_tolerance_percent( 10.0 );
-        Angle angle_tolerance = Angle::from_degrees( 10.0 );
-        double best_FoM( 1000000.0 );
-        Matrix3D best_transformation_matrix;
-        int limit = 3;
-        for ( int i1( -limit ); i1 != limit+1; ++i1 )
-        {
-            std::cout << " ." << std::endl;
-        for ( int i2( -limit ); i2 != limit+1; ++i2 )
-        {
-            std::cout << " .." << std::endl;
-        for ( int i3( -limit ); i3 != limit+1; ++i3 )
-        {
-            for ( int j1( -limit ); j1 != limit+1; ++j1 )
-            {
-            for ( int j2( -limit ); j2 != limit+1; ++j2 )
-            {
-            for ( int j3( -limit ); j3 != limit+1; ++j3 )
-            {
-                for ( int k1( -limit ); k1 != limit+1; ++k1 )
-                {
-                for ( int k2( -limit ); k2 != limit+1; ++k2 )
-                {
-                for ( int k3( -limit ); k3 != limit+1; ++k3 )
-                {
-                    Matrix3D transformation_matrix( i1, i2, i3, j1, j2, j3, k1, k2, k3 );
-                    if ( ! nearly_equal( transformation_matrix.determinant(), determinant ) )
-                        continue;
-                    // Make a copy.
-                    CrystalLattice new_lattice( old_crystal_lattice );
-                    new_lattice.transform( transformation_matrix );
-                    if ( ! nearly_equal( new_lattice, target_crystal_lattice, length_tolerance_percent, angle_tolerance ) )
-                        continue;
-                    {
-                        double FoM = ((target_crystal_lattice.a_vector()+target_crystal_lattice.b_vector()+target_crystal_lattice.c_vector()) - (new_lattice.a_vector()+new_lattice.b_vector()+new_lattice.c_vector())).length();
-                        transformation_matrix.show();
-                        std::cout << "Inverse =" << std::endl;
-                        inverse( transformation_matrix ).show();
-                        new_lattice.print();
-                        std::cout << "FoM = " << FoM << std::endl;
-                        std::cout << std::endl;
-                        if ( FoM < best_FoM )
-                        {
-                            best_FoM = FoM;
-                            best_transformation_matrix = transformation_matrix;
-                        }
-                    }
-                }
-                }
-                }
-            }
-            }
-            }
-        }
-        }
-        }
-        crystal_structure.transform( best_transformation_matrix );
-        SpaceGroup space_group = crystal_structure.space_group();
-        space_group.set_name( "" );
-        crystal_structure.set_space_group( space_group );
-        crystal_structure.save_cif( replace_extension( append_to_file_name( input_file_name, "_transformed" ) , "cif" ) );
-    MACRO_END_GAME
-
     try // Find transformation using similarity as a target.
     {
         if ( argc < 2 )
@@ -2791,10 +3144,8 @@ int main( int argc, char** argv )
             throw std::runtime_error( "Please give the names of two .xye files triangle_width." );
         FileName file_name_1( argv[ 1 ] );
         FileName file_name_2( argv[ 2 ] );
-        PowderPattern powder_pattern_1;
-        PowderPattern powder_pattern_2;
-        powder_pattern_1.read_xye( file_name_1 );
-        powder_pattern_2.read_xye( file_name_2 );
+        PowderPattern powder_pattern_1( file_name_1 );
+        PowderPattern powder_pattern_2( file_name_2 );
         Angle triangle_width = Angle( 3.0, Angle::DEGREES );
         if ( argc > 3 )
             triangle_width = Angle( string2double( argv[ 3 ] ), Angle::DEGREES );
@@ -2890,194 +3241,6 @@ int main( int argc, char** argv )
         y_s.push_back( y2 );
         LinearFunction linear_function = linear_regression( x_s, y_s );
         std::cout << double2string( linear_function( x ), 12 ) << std::endl;
-    MACRO_END_GAME
-
-    // Detect pseudo-inversion symmetry.
-    // Crude algorithm, only works if there are only two fragments in the asymmetric unit.
-    // Assumes that the first half of the atoms is one molecule in the asymmetric unit,
-    // the second half of the atoms the second molecule.
-    // The algorithm to detect floating axes works for up to and including orthorhombic, I do not know about the other space groups.
-    try
-    {
-        MACRO_ONE_CIFFILENAME_AS_ARGUMENT
-        if ( is_odd( crystal_structure.natoms() ) )
-            throw std::runtime_error( "Z' must be 2 and number of atoms must therefore be even." );
-        CrystalStructure original_crystal_structure( crystal_structure );
-        SpaceGroup original_space_group = crystal_structure.space_group();
-        bool at_least_one_floating_axis( false );
-        for ( size_t i( 0 ); i != 3; ++i )
-        {
-            if ( original_space_group.is_floating_axis( i ) )
-            {
-                std::cout << "Floating axis found " << Vector3D::index2string( i ) << std::endl;
-                at_least_one_floating_axis = true;
-            }
-        }
-        for ( size_t iSymmOp( 0 ); iSymmOp != original_space_group.nsymmetry_operators(); ++iSymmOp )
-        {
-            crystal_structure = original_crystal_structure;
-            // Split the atoms into two. Assume first half is one molecule, second half is the other.
-            // Apply each symmetry operator (including the identity) in turn to the second molecule.
-            for ( size_t i( crystal_structure.natoms() / 2 ); i != crystal_structure.natoms(); ++i )
-            {
-                Atom new_atom( crystal_structure.atom( i ) );
-                new_atom.set_position( original_space_group.symmetry_operator( iSymmOp ) * crystal_structure.atom( i ).position() );
-                if ( new_atom.ADPs_type() == Atom::ANISOTROPIC )
-                    new_atom.set_anisotropic_displacement_parameters( rotate_adps( new_atom.anisotropic_displacement_parameters(), original_space_group.symmetry_operator( iSymmOp ).rotation(), crystal_structure.crystal_lattice() ) );
-                crystal_structure.set_atom( i, new_atom );
-            }
-            SpaceGroup space_group = crystal_structure.space_group();
-            Vector3D com = crystal_structure.centre_of_mass( true );
-            std::cout << "Centre of mass = " << std::endl;
-            com.show();
-            Vector3D shift; // Floating axes are set to -(c.o.m.).
-            Vector3D translation_for_symmetry_operators; // Floating axes are set to 0.0.
-            for ( size_t i( 0 ); i != 3; ++i )
-            {
-                if ( original_space_group.is_floating_axis( i ) )
-                {
-                    shift.set_value( i, -com.value(i) );
-                }
-                else
-                {
-                    // Not a floating axis
-                    // Round to nearest 1/12
-                    Fraction granularity( 1, 12 );
-                    if ( ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::TRICLINIC ) ||
-                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_A ) ||
-                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_B ) ||
-                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::MONOCLINIC_C ) ||
-                         ( original_crystal_structure.crystal_lattice().lattice_system() == CrystalLattice::ORTHORHOMBIC ) )
-                        granularity = Fraction( 1, 12 );
-                    Fraction fraction = double2fraction( -com.value(i), granularity );
-                    std::cout << "Shift rounded to a fraction = " + fraction.to_string() << std::endl;
-                    shift.set_value( i, fraction.to_double() );
-                    translation_for_symmetry_operators.set_value( i, shift.value( i ) );
-                }
-            }
-            SymmetryOperator symmetry_operator( Matrix3D(), translation_for_symmetry_operators ); // "x-1/4,y,z-3/4".
-            // In Mercury, if the space-group name and the set of symmetry operators do not match up,
-            // the space-group name takes precedence, so we have to erase it to ensure that the
-            // symmetry operators are used instead.
-            space_group.set_name( "" );
-            space_group.apply_similarity_transformation( symmetry_operator );
-            space_group.add_inversion_at_origin();
-            crystal_structure.set_space_group( space_group );
-            for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
-            {
-                Atom new_atom( crystal_structure.atom( i ) );
-                new_atom.set_position( ( crystal_structure.atom( i ).position() ) + shift );
-                crystal_structure.set_atom( i, new_atom );
-            }
-            // Up to this point, the shift along any floating axis was based on the c.o.m. of the entire molecule.
-            // Some atoms will now overlap almost perfectly, those close to chiral centres will not overlap at all.
-            // The shift that we applied was distorted by these atoms near the chiral centres that do not overlap at all.
-            // Here we try to calculate better shifts, based only on the atoms that overlap well.
-            // First, this is only relevant for floating axes. Second, this will only work for one of the symmetry operators (c.f. the loop over iSymmOp).
-            // "Almost perfect overlap" should mean a small distance between atoms of the same element and only a single unambiguous match.
-            // After we have applied this better shift, some more atoms, that previously did not overlap within the tolerance because the inclusion of the atoms near
-            // the chiral centres had distorted our shift, will now suddenly also match within the tolerance, so this has to be done iteratively.
-            // (Well, strictly speaking we simply need an algorithm that mathes molecular topologies, but currently we do not even have topologies so that is not going to work).
-            // First iteration. For each atom we find the atom that is closest. Atoms with multiple matches or with no match are discarded. If the elements do not
-            // match up, then that is also fishy, so we discard those as well. From the atom pairs that are left, sort them by distance, then take the top 25% of all atoms
-            // (not just of the atoms that were left) and use those to calculate better shifts.
-            // The "25%" is configurable, and the tolerance for matching is also a parameter.
-
-            // Skip the whole exercise if there were no floating axes to start with.
-            if ( at_least_one_floating_axis )
-            {
-                double tolerance = 0.3;
-                double fraction = 0.2;
-                std::vector< bool > done( crystal_structure.natoms(), false ); // We only use the second half, but this is way easier to program.
-                std::vector< bool > is_dodgy( crystal_structure.natoms() / 2, false );
-                std::vector< size_t > best_matches( crystal_structure.natoms() / 2, 0 );
-                std::vector< double > best_distances( crystal_structure.natoms() / 2, 0.0 );
-                for ( size_t iAtom1( 0 ); iAtom1 != crystal_structure.natoms() / 2; ++iAtom1 )
-                {
-                    size_t best_match = crystal_structure.natoms() / 2;
-                    double best_distance = crystal_structure.crystal_lattice().shortest_distance( crystal_structure.atom( iAtom1 ).position(), crystal_structure.atom( best_match ).position() );
-                    for ( size_t iAtom2( ( crystal_structure.natoms() / 2 ) + 1 ); iAtom2 != crystal_structure.natoms(); ++iAtom2 )
-                    {
-                        double distance = crystal_structure.crystal_lattice().shortest_distance( crystal_structure.atom( iAtom1 ).position(), -crystal_structure.atom( iAtom2 ).position() );
-                        if ( distance < best_distance )
-                        {
-                            best_distance = distance;
-                            best_match = iAtom2;
-                        }
-                    }
-                    best_matches[ iAtom1 ] = best_match;
-                    best_distances[ iAtom1 ] = best_distance;
-                    if ( best_distance > tolerance )
-                        is_dodgy[ iAtom1 ] = true;
-                    if ( done[ best_match ] )
-                    {
-                        // This iAtom2 has more than one match-all pairs involving it are dodgy.
-                        for ( size_t i( 0 ); i != iAtom1 + 1; ++i )
-                        {
-                            if ( best_matches[ i ] == best_match )
-                                is_dodgy[ i ] = true;
-                        }
-                    }
-                    else
-                    {
-                        // Unique match. Check the elements.
-                        if ( crystal_structure.atom( iAtom1 ).element() != crystal_structure.atom( best_match ).element() )
-                            is_dodgy[ iAtom1 ] = true;
-                        done[ best_match ] = true;
-                    }
-                }
-                // Remove dodgy matches.
-                std::vector< size_t > atoms_1;
-                std::vector< size_t > atoms_2;
-                std::vector< double > distances;
-                for ( size_t i( 0 ); i != crystal_structure.natoms() / 2; ++i )
-                {
-                    if ( ! is_dodgy[ i ] )
-                    {
-                        atoms_1.push_back( i );
-                        atoms_2.push_back( best_matches[ i ] );
-                        distances.push_back( best_distances[ i ] );
-                    }
-                }
-                // Has at least 25% survived?
-                if ( ( static_cast<double>( atoms_1.size() ) / ( crystal_structure.natoms() / 2.0 ) ) > fraction )
-                {
-                    // Calculate the c.o.m.. based only on the atoms that match very well.
-                    // We have two choices here: either we only use the top 25% of the matches
-                    // (which must all match within tolerance), assuming that they
-                    // yield the best value possible, or we use all matches up to a certain distance.
-                    // We just use all of them and we do not do any iterations.
-                    Vector3D com_2;
-                    for ( size_t i( 0 ); i != atoms_1.size(); ++i )
-                    {
-                        com_2 += crystal_structure.atom( atoms_1[ i ] ).position();
-                        com_2 += crystal_structure.atom( atoms_2[ i ] ).position();
-                    }
-                    com_2 /= ( atoms_1.size() * 2.0 );
-                    std::cout << "Refined centre of mass = " << std::endl;
-                    com_2.show();
-                    Vector3D shift_2; // Floating axes are set to -(c.o.m.).
-                    for ( size_t i( 0 ); i != 3; ++i )
-                    {
-                        if ( original_space_group.is_floating_axis( i ) )
-                            shift_2.set_value( i, -com_2.value(i) );
-                    }
-                    for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
-                    {
-                        Atom new_atom( crystal_structure.atom( i ) );
-                        new_atom.set_position( ( crystal_structure.atom( i ).position() ) + shift_2 );
-                        crystal_structure.set_atom( i, new_atom );
-                    }
-                }
-            }
-            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse" ) );
-            for ( size_t i( crystal_structure.natoms() / 2 ); i != crystal_structure.natoms(); ++i )
-                crystal_structure.set_suppressed( i, true );
-            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse_1" ) );
-            for ( size_t i( 0 ); i != crystal_structure.natoms(); ++i )
-                crystal_structure.set_suppressed( i, !crystal_structure.suppressed( i ) );
-            crystal_structure.save_cif( append_to_file_name( input_file_name, "_" + size_t2string( iSymmOp ) + "_inverse_2" ) );
-        }
     MACRO_END_GAME
 
     try // Random numbers.
@@ -4172,8 +4335,7 @@ int main( int argc, char** argv )
         if ( argc != 2 )
             throw std::runtime_error( "Please give the name of a .raw file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_raw( input_file_name );
+        PowderPattern powder_pattern = read_raw( input_file_name );
         powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
     MACRO_END_GAME
 
@@ -4183,8 +4345,7 @@ int main( int argc, char** argv )
         if ( argc != 2 )
             throw std::runtime_error( "Please give the name and path of the RawData0.xml file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_brml( input_file_name );
+        PowderPattern powder_pattern = read_brml( input_file_name );
         powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
     MACRO_END_GAME
 
@@ -6552,8 +6713,7 @@ int main( int argc, char** argv )
         if ( argc != 2 )
             throw std::runtime_error( "Please give the name of a .xrdml file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_xrdml( input_file_name );
+        PowderPattern powder_pattern = read_xrdml( input_file_name );
         std::cout << powder_pattern.average_two_theta_step() << std::endl;
         powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
     MACRO_END_GAME
@@ -6670,8 +6830,7 @@ int main( int argc, char** argv )
         if ( argc != 2 )
             throw std::runtime_error( "Please give the name of a .mdi file." );
         FileName input_file_name( argv[ 1 ] );
-        PowderPattern powder_pattern;
-        powder_pattern.read_mdi( input_file_name );
+        PowderPattern powder_pattern = read_mdi( input_file_name );
         powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
     MACRO_END_GAME
 
@@ -6778,11 +6937,9 @@ int main( int argc, char** argv )
     try // Subtract two powder patterns.
     {
         FileName input_file_name_1( "GP_profile.xye" );
-        PowderPattern powder_pattern_1;
-        powder_pattern_1.read_xye( input_file_name_1 );
+        PowderPattern powder_pattern_1( input_file_name_1 );
         FileName input_file_name_2( "GP_BKGR.xye" );
-        PowderPattern powder_pattern_2;
-        powder_pattern_2.read_xye( input_file_name_2 );
+        PowderPattern powder_pattern_2( input_file_name_2 );
         powder_pattern_1 -= powder_pattern_2;
 
         powder_pattern_1.correct_zero_point_error( Angle::from_degrees( 0.14068 ) );
@@ -6947,26 +7104,22 @@ int main( int argc, char** argv )
         std::vector< double > noscp2ts;
 
         {
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_01.xye" ) );
+        PowderPattern powder_pattern( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_01.xye" ) );
         powder_patterns.push_back( powder_pattern );
         noscp2ts.push_back( 1.0 );
         }
         {
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_02.xye" ) );
+        PowderPattern powder_pattern( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_02.xye" ) );
         powder_patterns.push_back( powder_pattern );
         noscp2ts.push_back( 1.0 );
         }
         {
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_03.xye" ) );
+        PowderPattern powder_pattern( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_03.xye" ) );
         powder_patterns.push_back( powder_pattern );
         noscp2ts.push_back( 2.0 );
         }
         {
-        PowderPattern powder_pattern;
-        powder_pattern.read_xye( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_04.xye" ) );
+        PowderPattern powder_pattern( FileName( "C:\\Data_Win\\KOFHOC\\VCT\\NewSample\\range_04.xye" ) );
         powder_patterns.push_back( powder_pattern );
         noscp2ts.push_back( 4.0 );
         }
@@ -7335,8 +7488,7 @@ int main( int argc, char** argv )
         for ( size_t i( 0 ); i != file_list.size(); ++i )
         {
             FileName input_file_name = file_list.value(i);
-            PowderPattern powder_pattern;
-            powder_pattern.read_txt( input_file_name );
+            PowderPattern powder_pattern = read_txt( input_file_name );
             powder_pattern.save_xye( replace_extension( input_file_name, "xye" ), true );
         }
     MACRO_END_GAME
