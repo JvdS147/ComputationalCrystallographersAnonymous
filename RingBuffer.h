@@ -31,8 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 #include <vector>
 
-#include <iostream> // for debugging
-
 /*
   A ring buffer. Writing appends at the end, reading reads from the front.
   @@@ Size should really be infinite, but that requires a bit of programming.
