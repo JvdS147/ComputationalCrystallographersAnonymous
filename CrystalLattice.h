@@ -140,6 +140,10 @@ There is no trigonal lattice system, and no trigonal crystal family.
     // Returns the shortest distance (in Angstrom) and the shortest difference vector (defined as rhs - lhs, in fractional coordinates).
     void shortest_distance( const Vector3D & lhs, const Vector3D & rhs, double & distance, Vector3D & difference_vector ) const;
 
+    // Finds shortest distance, in Angstrom, between two positions given in fractional coordinates.
+    // Returns the shortest distance (in Angstrom) and the shortest difference vector (defined as rhs - lhs, in fractional coordinates).
+    void shortest_distance2( const Vector3D & lhs, const Vector3D & rhs, double & distance2, Vector3D & difference_vector ) const;
+
     // The lattice system is initialised by deducing it from the unit-cell parameters.
     LatticeSystem lattice_system() const { return lattice_system_; }
 

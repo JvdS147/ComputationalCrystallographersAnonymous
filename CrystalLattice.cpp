@@ -361,6 +361,44 @@ void CrystalLattice::shortest_distance( const Vector3D & lhs, const Vector3D & r
 
 // ********************************************************************************
 
+// Finds shortest distance, in Angstrom, between two positions given in fractional coordinates.
+// Returns the shortest distance and the shortest difference vector (in fractional coordinates).
+void CrystalLattice::shortest_distance2( const Vector3D & lhs, const Vector3D & rhs, double & output_distance2, Vector3D & output_difference_vector ) const
+{
+    Vector3D difference_vector = adjust_for_translations( rhs - lhs ); // In fractional coordinates
+    // Now we must find the shortest distance.
+    output_distance2 = fractional_to_orthogonal( difference_vector ).norm2();
+    // "output_distance2" may now be something like 0.95, which clearly should have been 0.05. Likewise,
+    // with very acute unit-cell angles, it may be necessary to add or subtract +/- 1 (fractional coordinates).
+    Vector3D original_difference_vector( difference_vector );
+    bool shortest_distance2_changed( false );
+    do
+    {
+        shortest_distance2_changed = false;
+        for ( int i( -1 ); i != 2; ++i )
+        {
+            for ( int j( -1 ); j != 2; ++j )
+            {
+                for ( int k( -1 ); k != 2; ++k )
+                {
+                    Vector3D new_difference_vector = original_difference_vector + Vector3D( i, j, k );
+                    double distance2 = fractional_to_orthogonal( new_difference_vector ).norm2();
+                    if ( distance2 < output_distance2 )
+                    {
+                        difference_vector = new_difference_vector;
+                        output_distance2 = distance2;
+                        shortest_distance2_changed = true;
+                    }
+                }
+            }
+        }
+    }
+    while ( shortest_distance2_changed );
+    output_difference_vector = difference_vector;
+}
+
+// ********************************************************************************
+
 void CrystalLattice::set_lattice_system( const LatticeSystem lattice_system )
 {
     // It should be possible to start with the unit-cell parameters of a cubic unit cell,

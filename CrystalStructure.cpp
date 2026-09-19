@@ -969,156 +969,6 @@ double CrystalStructure::shortest_distance2( const Vector3D & lhs, const Vector3
 
 // ********************************************************************************
 
-// The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
-// the original unit cell, space_group is the space group of the original unit cell.
-void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const size_t w, const SpaceGroup & space_group )
-{
-    for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        Vector3D position = atoms_[ i ].position();
-        position.set_x( u * position.x() );
-        position.set_y( v * position.y() );
-        position.set_z( w * position.z() );
-        atoms_[ i ].set_position( position );
-    }
-    position_all_atoms_within_unit_cell();
-    CrystalLattice crystal_lattice( crystal_lattice_.a() / u,
-                                    crystal_lattice_.b() / v,
-                                    crystal_lattice_.c() / w,
-                                    crystal_lattice_.alpha(),
-                                    crystal_lattice_.beta(),
-                                    crystal_lattice_.gamma() );
-    crystal_lattice_ = crystal_lattice;
-    // Now apply the symmetry operators (including unit-cell translations) to position each
-    // atom as close as possible to 0,0,0 with all positive coordinates.
-    for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        Vector3D shortest_position = atoms_[ i ].position();
-        double shortest_distance = shortest_position.length();
-        for ( size_t j( 0 ); j != space_group.nsymmetry_operators(); ++j )
-        {
-            Vector3D new_position = space_group.symmetry_operator( j ) * atoms_[ i ].position();
-            new_position = adjust_for_translations( new_position );
-            if ( new_position.length() < shortest_distance )
-            {
-                shortest_position = new_position;
-                shortest_distance = shortest_position.length();
-            }
-        }
-        atoms_[ i ].set_position( shortest_position );
-    }
-}
-
-// ********************************************************************************
-
-// The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
-// the original unit cell.
-void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const size_t w )
-{
-    for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        Vector3D position = atoms_[ i ].position();
-        position.set_x( u * position.x() );
-        position.set_y( v * position.y() );
-        position.set_z( w * position.z() );
-        atoms_[ i ].set_position( position );
-    }
-    position_all_atoms_within_unit_cell();
-    CrystalLattice crystal_lattice( crystal_lattice_.a() / u,
-                                    crystal_lattice_.b() / v,
-                                    crystal_lattice_.c() / w,
-                                    crystal_lattice_.alpha(),
-                                    crystal_lattice_.beta(),
-                                    crystal_lattice_.gamma() );
-    crystal_lattice_ = crystal_lattice;
-    // Average the atomic coordinates.
-    std::vector< Atom > new_atoms;
-    size_t multiplicity = u * v * w;
-    new_atoms.reserve( atoms_.size() / multiplicity );
-    std::vector< bool > done( atoms_.size(), false );
-    for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        if ( done[ i ] )
-            continue;
-        RunningAverageAndESD< Vector3D > average_position;
-        average_position.add_value( atoms_[ i ].position() );
-        size_t natoms_for_average = 1;
-        done[ i ] = true;
-        for ( size_t j( i+1 ); j != atoms_.size(); ++j )
-        {
-            if ( done[ j ] )
-                continue;
-            double distance;
-            Vector3D difference_vector;
-            crystal_lattice_.shortest_distance( average_position.average(), atoms_[ j ].position(), distance, difference_vector );
-            if ( distance < 0.3 )
-            {
-                if ( atoms_[ i ].element() != atoms_[ j ].element() )
-                    std::cout << "CrystalStructure::collapse_supercell( ): Warning: the atoms to be averaged have different elements." << std::endl;
-                ++natoms_for_average;
-                average_position.add_value( average_position.average() + difference_vector );
-                done[ j ] = true;
-            }
-        }
-        if ( natoms_for_average != multiplicity )
-            std::cout << "CrystalStructure::collapse_supercell( ): Warning: the number of averaged atoms (" + size_t2string(natoms_for_average) + ") is not equal to the multiplicity (" + size_t2string(multiplicity) + ")." << std::endl;
-        new_atoms.push_back( Atom( atoms_[ i ].element(), average_position.average(), atoms_[ i ].label() ) );
-    }
-    atoms_ = new_atoms;
-}
-
-
-// ********************************************************************************
-
-// The current space group should be P1.
-// Collapse supercell, assume order *in the unit cell* (not in the molecule) can be trusted
-// (if there are n atoms in a unit cell, then atom n+1 corresponds to atom 1 in unit cell 1)
-void CrystalStructure::collapse_supercell( const size_t u, const size_t v, const size_t w, const size_t natoms )
-{
-    for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        Vector3D position = atoms_[ i ].position();
-        position.set_x( u * position.x() );
-        position.set_y( v * position.y() );
-        position.set_z( w * position.z() );
-        atoms_[ i ].set_position( position );
-    }
-    CrystalLattice crystal_lattice( crystal_lattice_.a() / u,
-                                    crystal_lattice_.b() / v,
-                                    crystal_lattice_.c() / w,
-                                    crystal_lattice_.alpha(),
-                                    crystal_lattice_.beta(),
-                                    crystal_lattice_.gamma() );
-    crystal_lattice_ = crystal_lattice;
-    // Average the atomic coordinates
-    size_t multiplicity = u * v * w;
-    size_t natoms_per_unit_cell = atoms_.size() / multiplicity;
-    std::vector< Atom > new_atoms;
-    new_atoms.reserve( natoms_per_unit_cell );
-    for ( size_t i( 0 ); i != natoms_per_unit_cell; ++i )
-    {
-        RunningAverageAndESD< Vector3D > average_position;
-        average_position.add_value( atoms_[ i ].position() );
-        for ( size_t j( 1 ); j != multiplicity; ++j )
-        {
-            size_t jatom = natoms_per_unit_cell * j + i;
-            // Determine u, v and w for x, y and z.
-            Vector3D jatom_position( atoms_[ jatom ].position() );
-            int i_u = round_to_int( jatom_position.x() - atoms_[ i ].position().x() );
-            int i_v = round_to_int( jatom_position.y() - atoms_[ i ].position().y() );
-            int i_w = round_to_int( jatom_position.z() - atoms_[ i ].position().z() );
-            jatom_position = Vector3D( jatom_position.x() - i_u, jatom_position.y() - i_v, jatom_position.z() - i_w );
-            average_position.add_value( jatom_position );
-            if ( atoms_[ i ].element() != atoms_[ jatom ].element() )
-                std::cout << "CrystalStructure::collapse_supercell( ): Warning: the atoms to be averaged have different elements." << std::endl;
-        }
-        new_atoms.push_back( Atom( atoms_[ i ].element(), average_position.average(), atoms_[ i ].label() ) );
-    }
-    atoms_ = new_atoms;
-}
-
-// ********************************************************************************
-
 // Collapse supercell, assume order *in the unit cell* (not in the molecule) can be trusted
 // (if there are n atoms in a unit cell, then atom n+1 corresponds to atom 1 in unit cell 1)
 void CrystalStructure::collapse_supercell( const size_t u,
@@ -1188,30 +1038,28 @@ void CrystalStructure::collapse_supercell( const size_t u,
             size_t jatom = natoms_per_asymmetric_unit * j + i;
             if ( atoms_[ i ].element() != atoms_[ jatom ].element() )
                 std::cout << "CrystalStructure::collapse_supercell( ): Warning: the atoms to be averaged have different elements." << std::endl;
-            double smallest_norm2 = 10000000.0;
-            Vector3D smallest_norm2_position;
-            for ( size_t k( 0 ); k != space_group_.nsymmetry_operators(); ++k ) // SpaceGroup::symmetry_operator( i ) returns a copy, so this is extremely wasteful.
+            Vector3D jatom_position( atoms_[ jatom ].position() );
+            double shortest_distance2;
+            Vector3D shortest_difference_vector;
+            crystal_lattice_.shortest_distance2( iatom_position, jatom_position, shortest_distance2, shortest_difference_vector );
+            // Loop over symmetry operators.
+            for ( size_t k( 1 ); k != space_group_.nsymmetry_operators(); ++k )
             {
-                Vector3D jatom_position = space_group_.symmetry_operator( k ) * atoms_[ jatom ].position();
-                // Determine u, v and w for x, y and z.
-                int i_u = round_to_int( jatom_position.x() - atoms_[ i ].position().x() );
-                int i_v = round_to_int( jatom_position.y() - atoms_[ i ].position().y() );
-                int i_w = round_to_int( jatom_position.z() - atoms_[ i ].position().z() );
-                jatom_position = Vector3D( jatom_position.x() - i_u, jatom_position.y() - i_v, jatom_position.z() - i_w );
-                Vector3D difference = jatom_position - iatom_position;
-                difference = crystal_lattice_.fractional_to_orthogonal( difference );
-                double norm2 = difference.norm2();
-                if ( norm2 < smallest_norm2 )
+                // Fractional coordinates.
+                Vector3D current_position = space_group_.symmetry_operator( k ) * jatom_position;
+                // Adjust for translations and convert to Cartesian coordinates.
+                double distance2;
+                Vector3D difference_vector; // Fractional coordinates.
+                crystal_lattice_.shortest_distance2( iatom_position, current_position, distance2, difference_vector );
+                if ( distance2 < shortest_distance2 )
                 {
-                    smallest_norm2 = norm2;
-                    smallest_norm2_position = jatom_position;
+                    shortest_distance2 = distance2;
+                    shortest_difference_vector = difference_vector;
                 }
             }
-            if ( smallest_norm2 > 25.0 )
+            if ( shortest_distance2 > 25.0 )
                 ++ndistances_gt_5;
-            if ( smallest_norm2 == 10000000.0 )
-                std::cout << "Oops..." << std::endl;
-            positions_2.push_back( smallest_norm2_position );
+            positions_2.push_back( iatom_position + shortest_difference_vector );
         }
         positions.push_back( positions_2 );
     }

@@ -252,24 +252,6 @@ public:
     // All space-group symmetry operators are taken into account; if this is undesired, use CrystalLattice::shortest_distance2().
     double shortest_distance2( const Vector3D & lhs, const Vector3D & rhs ) const;
 
-    // The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
-    // the original unit cell, space_group is the space group of the original unit cell.
-    void collapse_supercell( const size_t u, const size_t v, const size_t w, const SpaceGroup & space_group );
-
-
-    // The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
-    // the original unit cell.
-    void collapse_supercell( const size_t u, const size_t v, const size_t w );
-
-
-// @@ natoms is currently not used but is used to disambiguate the overload...
-
-    // The current space group should be P1. u, v, w are the dimensions of the supercell with respect to
-    // the original unit cell.
-    // Collapse supercell, assume order *in the unit cell* (not in the molecule) can be trusted
-    // (if there are n atoms in a unit cell, then atom n+1 corresponds to atom 1 in unit cell 1)
-    void collapse_supercell( const size_t u, const size_t v, const size_t w, const size_t natoms );
-
     // This function is mainly for use in the AnalyseTrajectory class. You probably do not need to call it directly but you should
     // use an AnalyseTrajectory object instead.
     // u, v, w are the dimensions of the supercell with respect to the original unit cell.
