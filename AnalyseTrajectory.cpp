@@ -30,7 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AnisotropicDisplacementParameters.h"
 #include "CrystalStructure.h"
 #include "DoubleWithESD.h"
+#include "Eigenvalue.h"
 #include "Element.h"
+#include "Histogram.h"
+#include "NormalisedVector3D.h"
 #include "ReadCif.h"
 #include "TextFileWriter.h"
 #include "Utilities.h"
@@ -163,6 +166,7 @@ void AnalyseTrajectory::analyse()
                                                average_beta_.average(),
                                                average_gamma_.average() );
     std::vector< AnisotropicDisplacementParameters > all_ADPs;
+    size_t nlarge_adps( 0 );
     // We precalculate all ADPs, even if not necessary.
     for ( size_t i( 0 ); i != natoms_; ++i )
     {
@@ -170,6 +174,28 @@ void AnalyseTrajectory::analyse()
         for ( size_t j( 0 ); j != fractional_positions_trajectory[i].size(); ++j )
             cartesian_positions.push_back( crystal_lattice_average_.fractional_to_orthogonal_matrix() * fractional_positions_trajectory[i][j] );
         AnisotropicDisplacementParameters adps( cartesian_positions );
+        bool analyse_ADPs = true;
+        double threshold( 0.15 );
+        if ( analyse_ADPs && ( ! elements[i].is_H_or_D() ) )
+        {
+            SymmetricMatrix3D Ucart = adps.U_cart();
+            std::vector< double > eigenvalues;
+            std::vector< NormalisedVector3D > eigenvectors;
+            calculate_eigenvalues( Ucart, eigenvalues, eigenvectors );
+            if ( eigenvalues[2] > threshold )
+            {
+                ++nlarge_adps;
+                Histogram histogram( -2.0, 2.0, 21 );
+                for ( size_t j( 0 ); j != cartesian_positions.size(); ++j )
+                {
+                    double projected_position = eigenvectors[2] * ( cartesian_positions[j] - crystal_lattice_average_.fractional_to_orthogonal_matrix() * average_positions[i].average() );
+                    histogram.add_data( projected_position );
+                }
+                std::cout << nlarge_adps << std::endl;
+                histogram.plot();
+                std::cout << std::endl;
+            }
+        }
         all_ADPs.push_back( adps );
     }
     if ( write_average_ )
