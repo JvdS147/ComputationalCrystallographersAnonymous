@@ -78,6 +78,10 @@ public:
 
     void set_space_group( const SpaceGroup & space_group ) { space_group_ = space_group; }
 
+    void set_analyse_ADPs( const bool analyse_ADPs ) { analyse_ADPs_ = analyse_ADPs; }
+
+    void set_ADP_threshold( const double ADP_threshold ) { ADP_threshold_ = ADP_threshold; }
+
     void set_drift_correction( const DriftCorrection drift_correction ) { drift_correction_ = drift_correction; }
     
     void set_drift_correction_vector( const Vector3D & drift_correction_vector ) { drift_correction_vector_ = drift_correction_vector; }
@@ -110,6 +114,8 @@ private:
     size_t natoms_;
     SpaceGroup space_group_;
     CrystalLattice crystal_lattice_average_;
+    bool analyse_ADPs_;
+    double ADP_threshold_;
     bool write_lean_;
     bool write_average_;
     bool write_average_noH_;

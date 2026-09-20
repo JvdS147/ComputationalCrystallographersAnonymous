@@ -50,6 +50,8 @@ u_(u),
 v_(v),
 w_(w),
 space_group_(space_group),
+analyse_ADPs_(false),
+ADP_threshold_(0.15),
 write_lean_(false),
 write_average_(true),
 write_average_noH_(false),
@@ -84,15 +86,7 @@ void AnalyseTrajectory::analyse()
     read_cif( file_list_.value( 0 ), crystal_structure );
     if ( write_lean_ )
         crystal_structure.save_cif( append_to_file_name( file_list_.value( 0 ), "_lean" ) );
-    CrystalLattice crystal_lattice = crystal_structure.crystal_lattice();
     crystal_structure.set_space_group( space_group_ );
-    average_a_.add_value( crystal_lattice.a() / u_ );
-    average_b_.add_value( crystal_lattice.b() / v_ );
-    average_c_.add_value( crystal_lattice.c() / w_ );
-    average_alpha_.add_value( crystal_lattice.alpha() );
-    average_beta_.add_value( crystal_lattice.beta() );
-    average_gamma_.add_value( crystal_lattice.gamma() );
-    average_volume_.add_value( crystal_lattice.volume() / ( u_ * v_ * w_ ) );
     std::vector< std::vector< Vector3D > > fractional_positions_frame;
     Vector3D actual_centre;
 //     enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR, FLOATING_AXES };
@@ -108,6 +102,14 @@ void AnalyseTrajectory::analyse()
     }
     else // USE_VECTOR
         crystal_structure.collapse_supercell( u_, v_, w_, drift_correction_, drift_correction_vector_, actual_centre, fractional_positions_frame );
+    CrystalLattice crystal_lattice = crystal_structure.crystal_lattice();
+    average_a_.add_value( crystal_lattice.a() );
+    average_b_.add_value( crystal_lattice.b() );
+    average_c_.add_value( crystal_lattice.c() );
+    average_alpha_.add_value( crystal_lattice.alpha() );
+    average_beta_.add_value( crystal_lattice.beta() );
+    average_gamma_.add_value( crystal_lattice.gamma() );
+    average_volume_.add_value( crystal_lattice.volume() );
     centres_of_mass_.push_back( actual_centre );
     natoms_ = fractional_positions_frame.size();
     elements.reserve( natoms_ );
@@ -134,19 +136,19 @@ void AnalyseTrajectory::analyse()
         read_cif( file_list_.value( i ), crystal_structure );
         if ( write_lean_ )
             crystal_structure.save_cif( append_to_file_name( file_list_.value( i ), "_lean" ) );
-        CrystalLattice crystal_lattice = crystal_structure.crystal_lattice();
         crystal_structure.set_space_group( space_group_ );
-        average_a_.add_value( crystal_lattice.a() / u_ );
-        average_b_.add_value( crystal_lattice.b() / v_ );
-        average_c_.add_value( crystal_lattice.c() / w_ );
+        std::vector< std::vector< Vector3D > > fractional_positions_frame;
+        // Returns a std::vector of atomic coordinates for each atom in the asymmetric unit.
+        Vector3D actual_centre;
+        crystal_structure.collapse_supercell( u_, v_, w_, drift_correction_, drift_correction_vector_, actual_centre, fractional_positions_frame );
+        CrystalLattice crystal_lattice = crystal_structure.crystal_lattice();
+        average_a_.add_value( crystal_lattice.a() );
+        average_b_.add_value( crystal_lattice.b() );
+        average_c_.add_value( crystal_lattice.c() );
         average_alpha_.add_value( crystal_lattice.alpha() );
         average_beta_.add_value( crystal_lattice.beta() );
         average_gamma_.add_value( crystal_lattice.gamma() );
-        average_volume_.add_value( crystal_lattice.volume() / ( u_ * v_ * w_ ) );
-        std::vector< std::vector< Vector3D > > fractional_positions_frame;
-        // Returns a std::vector of atomic coordinates for each atom in the asymmetric unit
-        Vector3D actual_centre;
-        crystal_structure.collapse_supercell( u_, v_, w_, drift_correction_, drift_correction_vector_, actual_centre, fractional_positions_frame );
+        average_volume_.add_value( crystal_lattice.volume() );
         centres_of_mass_.push_back( actual_centre );
         if ( fractional_positions_frame.size() != natoms_ )
             throw std::runtime_error( "AnalyseTrajectory::analyse(): The number of atoms in the cif files is not the same, the average cif could not be generated." );
@@ -174,15 +176,13 @@ void AnalyseTrajectory::analyse()
         for ( size_t j( 0 ); j != fractional_positions_trajectory[i].size(); ++j )
             cartesian_positions.push_back( crystal_lattice_average_.fractional_to_orthogonal_matrix() * fractional_positions_trajectory[i][j] );
         AnisotropicDisplacementParameters adps( cartesian_positions );
-        bool analyse_ADPs = true;
-        double threshold( 0.15 );
-        if ( analyse_ADPs && ( ! elements[i].is_H_or_D() ) )
+        if ( analyse_ADPs_ && ( ! elements[i].is_H_or_D() ) )
         {
             SymmetricMatrix3D Ucart = adps.U_cart();
             std::vector< double > eigenvalues;
             std::vector< NormalisedVector3D > eigenvectors;
             calculate_eigenvalues( Ucart, eigenvalues, eigenvectors );
-            if ( eigenvalues[2] > threshold )
+            if ( eigenvalues[2] > ADP_threshold_ )
             {
                 ++nlarge_adps;
                 Histogram histogram( -2.0, 2.0, 21 );
