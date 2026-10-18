@@ -58,7 +58,7 @@ public:
     void set_value( size_t i, size_t j, const double value );
 
     double value_on_diagonal() const { return value_on_diagonal_; }
-    
+
     void set_value_on_diagonal( const double value ) { value_on_diagonal_ = value; }
 
     // Diagonal is not included.

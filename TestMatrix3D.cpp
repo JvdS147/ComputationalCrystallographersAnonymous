@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "Matrix3D.h"
-
 #include "TestSuite.h"
 
 #include <iostream>
@@ -43,17 +42,18 @@ void test_one_matrix3D( TestSuite & test_suite,
                         const double value20,
                         const double value21,
                         const double value22,
-                        const std::string& error_message )
+                        const std::string & error_message,
+                        const double tolerance = TOLERANCE )
 {
-    test_suite.test_equality_double( matrix3D.value( 0, 0 ), value00, error_message + " element 0 0" );
-    test_suite.test_equality_double( matrix3D.value( 0, 1 ), value01, error_message + " element 0 1" );
-    test_suite.test_equality_double( matrix3D.value( 0, 2 ), value02, error_message + " element 0 2" );
-    test_suite.test_equality_double( matrix3D.value( 1, 0 ), value10, error_message + " element 1 0" );
-    test_suite.test_equality_double( matrix3D.value( 1, 1 ), value11, error_message + " element 1 1" );
-    test_suite.test_equality_double( matrix3D.value( 1, 2 ), value12, error_message + " element 1 2" );
-    test_suite.test_equality_double( matrix3D.value( 2, 0 ), value20, error_message + " element 2 0" );
-    test_suite.test_equality_double( matrix3D.value( 2, 1 ), value21, error_message + " element 2 1" );
-    test_suite.test_equality_double( matrix3D.value( 2, 2 ), value22, error_message + " element 2 2" );
+    test_suite.test_equality_double( matrix3D.value( 0, 0 ), value00, error_message + " element 0 0", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 0, 1 ), value01, error_message + " element 0 1", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 0, 2 ), value02, error_message + " element 0 2", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 1, 0 ), value10, error_message + " element 1 0", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 1, 1 ), value11, error_message + " element 1 1", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 1, 2 ), value12, error_message + " element 1 2", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 2, 0 ), value20, error_message + " element 2 0", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 2, 1 ), value21, error_message + " element 2 1", tolerance );
+    test_suite.test_equality_double( matrix3D.value( 2, 2 ), value22, error_message + " element 2 2", tolerance );
 }
 
 void test_matrix3D( TestSuite & test_suite )
@@ -85,7 +85,6 @@ void test_matrix3D( TestSuite & test_suite )
     test_one_matrix3D( test_suite, matrix3D * matrix3D_2, 1.0, 0.0, 0.0,
                                                           0.0, 1.0, 0.0,
                                                           0.0, 0.0, 1.0, "Matrix3D::invert() 2" );
-
     }
     {
     Matrix3D matrix3D( 2.0, 0.0, 0.0,
@@ -117,6 +116,18 @@ void test_matrix3D( TestSuite & test_suite )
                                              0.0, -1.0, 0.0,
                                              0.0, 0.0, 0.0, "Matrix3D::convert_to_row_echelon_form() 3" );
     }
-    
+    {
+    Matrix3D U( 0.191176, 2.06042, 5.02117,
+                2.029690, 1.76060, 9.49458,
+                5.637110, 2.55985, 9.99180 );
+    Matrix3D M( U );
+    Matrix3D T;
+    U.convert_to_row_echelon_form( T );
+    test_one_matrix3D( test_suite, U, 5.63711, 2.55985, 9.99180,
+                                      0.00000, 1.97361, 4.68231,
+                                      0.00000, 0.00000, 3.90668, "Matrix3D::convert_to_row_echelon_form() 4", 0.00001 );
+    if ( ! nearly_equal( T * M, U, 0.00001 ) )
+        test_suite.log_error( "Matrix3D::convert_to_row_echelon_form() 5" );
+    }
 }
 

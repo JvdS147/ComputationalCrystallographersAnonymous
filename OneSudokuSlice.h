@@ -65,7 +65,7 @@ public:
 
     SetOfNumbers collect_solved_numbers() const;
     
-    // Only makes sense if size() == 6, otherwise it just returns 1 through 9
+    // Only makes sense if size() == 6, otherwise it just returns 1 through 9.
     SetOfNumbers collect_all_possible_numbers() const;
 
     std::vector< size_t > indices_of_unsolved_squares() const;

@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Angle.h"
 
-//#include "BasicMathsFunctions.h"
 #include "TestSuite.h"
 
 #include <iostream>

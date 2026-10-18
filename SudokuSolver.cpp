@@ -573,8 +573,6 @@ bool empty_rectangle( Sudoku & sudoku )
         // and it should not be possible to cut all of the unsolved ones with a single line
         // This means that the block lay-outs must be defined in the same way for each block, which is the case.
         bool found( false );
-        size_t row;
-        size_t col;
         size_t rc2index[3][3] = { {0,1,2},
                                   {3,4,5},
                                   {6,7,8} };
@@ -595,8 +593,6 @@ bool empty_rectangle( Sudoku & sudoku )
                     if ( ( ( ! block.square( rc2index[row_m1.current_value()][iCol] ).solved() ) || ( ! block.square( rc2index[row_p1.current_value()][iCol] ).solved() ) ) && 
                          ( ( ! block.square( rc2index[iRow][col_m1.current_value()] ).solved() ) || ( ! block.square( rc2index[iRow][col_p1.current_value()] ).solved() ) ) )
                     {
-                        row = iRow;
-                        col = iCol;
                         found = true;
                         break;
                     }

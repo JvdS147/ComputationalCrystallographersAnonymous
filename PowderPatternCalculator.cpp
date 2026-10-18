@@ -366,10 +366,6 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
     double s400 = crystal_structure_.crystal_lattice().a_star();
     double s040 = crystal_structure_.crystal_lattice().b_star();
     double s004 = crystal_structure_.crystal_lattice().c_star();
-
-//    double scale_factor = std::max( std::max( s400, s040), s004 ) / std::min( std::min( s400, s040), s004 );
-//    std::cout << "scale_factor = " << scale_factor << std::endl;
-
     // Calculate one peak with area 1.0.
     std::vector< double > peak_points = peak_shape( two_theta_step_, FWHM );
     Vector3D PO_vector;
@@ -405,7 +401,6 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
         if ( include_anisotropic_peak_broadening_ )
         {
             FWHM = Stephens_FWHM( s400, s040, s004, theta, reflection_list.miller_indices( i ), square( reflection_list.d_spacing( i ) ), FWHM_ );
-//            std::cout << "FWHM = " << FWHM << std::endl;
             peak_points = peak_shape( two_theta_step_, FWHM );
         }
         if ( include_finger_cox_jephcoat_ && ( two_theta < Angle::angle_45_degrees() ) )
@@ -441,9 +436,9 @@ void PowderPatternCalculator::calculate( const ReflectionList & reflection_list,
                 int index = peak_start_index + j;
                 if ( ( index < 0 ) || ( index >= powder_pattern.size() ) )
                     continue;
-                double intensity = powder_pattern.intensity( index );
-                intensity += peak_intensity * pseudo_Voigt( ( powder_pattern.two_theta( index ) - two_theta ).value_in_degrees(), FWHM );
-                powder_pattern.set_intensity( index, intensity );
+                double intensity = powder_pattern.intensity( static_cast<size_t>( index ) );
+                intensity += peak_intensity * pseudo_Voigt( ( powder_pattern.two_theta( static_cast<size_t>( index ) ) - two_theta ).value_in_degrees(), FWHM );
+                powder_pattern.set_intensity( static_cast<size_t>( index ), intensity );
             }
         }
     }

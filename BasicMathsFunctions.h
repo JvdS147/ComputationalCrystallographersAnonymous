@@ -78,6 +78,19 @@ inline double absolute( const double x )
     return ( x < 0.0 ) ? -x : x;
 }
 
+// Scale-aware floating-point comparison for scientific calculations.
+// The historical nearly_equal(lhs, rhs, tolerance) overload remains
+// available for backwards compatibility; new numerical code should prefer
+// this predicate when quantities can span multiple orders of magnitude.
+//inline bool nearly_equal_scaled( const double lhs,
+//                                 const double rhs,
+//                                 const double absolute_tolerance = 1.0E-12,
+//                                 const double relative_tolerance = 1.0E-10 )
+//{
+//    return absolute( lhs - rhs ) <= absolute_tolerance +
+//           relative_tolerance * std::max( absolute( lhs ), absolute( rhs ) );
+//}
+
 inline size_t absolute( const int x )
 {
     return ( x < 0 ) ? -x : x;

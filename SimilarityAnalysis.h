@@ -42,3 +42,4 @@ CorrelationMatrix calculate_correlation_matrix_1( const FileList & file_list );
 FileList select_diverse_structures( const FileList & file_list, const double similarity_limit );
 
 #endif // SIMILARITYANALYSIS_H
+

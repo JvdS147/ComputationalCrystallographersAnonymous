@@ -28,10 +28,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
+#include "MathsFunctions.h"
+
 #include <stdexcept>
 #include <vector>
-
-#include "MathsFunctions.h"
 
 // x values, y values, sigmas, returns a+b*x.
 void linear_regression( const std::vector< double > & x, const std::vector< double > & y, const std::vector< double > & s, double & a, double & b );

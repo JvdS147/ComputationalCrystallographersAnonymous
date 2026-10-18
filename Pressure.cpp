@@ -33,6 +33,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Pressure::Pressure( const double value, const PressureUnit pressure_unit )
 {
+    switch ( pressure_unit )
+    {
+        case GPa: pressure_ = value; break;
+        case MPa: pressure_ = value / 1000.0; break;
+        case bar: pressure_ = value / 10000.0; break;
+        case atm: pressure_ = value * 0.000101325; break;
+    }
 }
 
 // ********************************************************************************

@@ -79,6 +79,5 @@ private:
 
 };
 
-
 #endif // SKIPBO_H
 

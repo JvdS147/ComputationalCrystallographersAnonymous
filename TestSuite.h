@@ -36,6 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 class TestSuite
 {
 public:
@@ -65,8 +67,8 @@ public:
 
     void test_equality_Complex( const Complex lhs, const Complex rhs, const std::string & error_message, double tolerance = TOLERANCE )
     {
-        if ( ( absolute( lhs.real() - rhs.real() ) > tolerance ) || ( absolute( lhs.imaginary() - rhs.imaginary() ) > tolerance ) )
-            error_messages_.push_back( error_message );
+        test_equality_double( lhs.real()     , rhs.real()     , error_message, tolerance );
+        test_equality_double( lhs.imaginary(), rhs.imaginary(), error_message, tolerance );
     }
 
     void log_error( const std::string & error_message )
@@ -75,6 +77,8 @@ public:
     }
 
     void report() const;
+
+    size_t error_count() const { return error_messages_.size(); }
 
 private:
     std::vector< std::string > error_messages_;

@@ -32,11 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Utilities.h"
 #include "Vector3D.h"
 
-//#include <fstream>
 #include <stdexcept>
 #include <iostream>
-
-//#include <iostream> // For debugging
 
 /*
 160
@@ -60,25 +57,21 @@ void read_xyz( const FileName & file_name, std::vector< Atom > & atoms )
     std::vector< std::string > words;
     std::string line;
 
-    // Number of atoms
+    // Number of atoms.
     if ( ! text_file_reader.get_next_line( words ) )
         throw std::runtime_error( "read_xyz(): file is empty." );
     if ( words.size() != 1 )
         throw std::runtime_error( "read_xyz(): first line must contain number of atoms." );
-    int number_of_atoms = string2integer( words[ 0 ] );
-    if ( number_of_atoms < 0 )
-        throw std::runtime_error( "read_xyz(): file is empty." );
-    // Commment
+    size_t number_of_atoms = string2size_t( words[ 0 ] );
+    // Commment.
     if ( ! text_file_reader.get_next_line( line ) )
         throw std::runtime_error( "read_xyz(): file is empty." );
     size_t atom_number( 1 );
     while ( text_file_reader.get_next_line( words ) )
     {
-        // Empty lines do not count, but do generate a warning
+        // Empty lines do not count, but do generate a warning.
         if ( words.empty() )
-        {
             std::cout << "read_xyz(): WARNING: empty line found." << std::endl;
-        }
         else if ( atom_number <= number_of_atoms )
         {
             if ( words.size() != 4 )
@@ -94,3 +87,4 @@ void read_xyz( const FileName & file_name, std::vector< Atom > & atoms )
     if ( atom_number != ( number_of_atoms + 1 ) )
         std::cout << "read_xyz(): WARNING: actual number of atoms (" + size_t2string( atom_number-1 ) + ") not equal to number specified (" + size_t2string( number_of_atoms ) + ")." << std::endl;
 }
+

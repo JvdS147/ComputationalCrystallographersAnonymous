@@ -37,6 +37,7 @@ class AnisotropicDisplacementParameters;
 
 #include <string>
 #include <vector>
+
 /*
     try // Calculate libration eigenvectors
     {
@@ -144,7 +145,7 @@ class TLS
 {
 public:
 
-    // Default constructor
+    // Default constructor.
     TLS();
 
     TLS( const SymmetricMatrix3D & T, const SymmetricMatrix3D & L, const Matrix3D & S );
@@ -160,10 +161,10 @@ public:
 
     AnisotropicDisplacementParameters U( const Vector3D & r ) const;
 
-    // Origin choice that makes S symmetric
+    // Origin choice that makes S symmetric.
     Vector3D centre_of_reaction() const;
 
-    // sqrt( trace( L ) )
+    // sqrt( trace( L ) ).
     Angle libration() const;
 
     std::vector< std::string > TOPAS_lines( const Vector3D & r ) const;

@@ -61,7 +61,7 @@ void TLS::set_is_on_inversion( const bool value )
     if ( ! nearly_zero( origin_ ) )
         throw std::runtime_error( "TLS::set_is_on_inversion( true ): origin is not the zero vector." );
     origin_ = Vector3D();
-    // S is now the zero matrix
+    // S is now the zero matrix.
     if ( ! nearly_equal( S_, Matrix3D( 0.0 ) ) )
         throw std::runtime_error( "TLS::set_is_on_inversion( true ): S is not the zero matrix." );
     S_ = Matrix3D( 0.0 );
@@ -79,7 +79,7 @@ AnisotropicDisplacementParameters TLS::U( const Vector3D & r ) const
     Matrix3D A( 0.0,   z,  -y,
                  -z, 0.0,   x,
                   y, - x, 0.0 );
-    // 1.) and 2.) should give the same result
+    // 1.) and 2.) should give the same result.
     // 1.)
     SymmetricMatrix3D U_1 = T_ +  Matrix3D2SymmetricMatrix3D( A*S_ + transpose( A*S_ ) + A*L_*transpose( A ) );
     // 2.)
@@ -119,14 +119,7 @@ Angle TLS::libration() const
 // @@ Could move this to the TOPAS class?
 std::vector< std::string > TLS::TOPAS_lines( const Vector3D & r ) const
 {
-    std::vector< std::string > result;
-    if ( is_on_inversion_ )
-    {
-    }
-    else
-    {
-    }
-    return result;
+    throw std::runtime_error( "TLS::TOPAS_lines(): not yet implemented." );
 //    u11" + label + " = L22*rz" + label + "^2 + L33*ry" + label + "^2 - 2*ry" + label + "*rz" + label + "*L23 - 2*ry" + label + "*S31 + 2*rz" + label + "*S21 + T11; : 0.0" );
 //    u22" + label + " = L11*rz" + label + "^2 + L33*rx" + label + "^2 - 2*rx" + label + "*rz" + label + "*L13 - 2*rz" + label + "*S12 + 2*rx" + label + "*S32 + T22; : 0.0" );
 //    u33" + label + " = L11*ry" + label + "^2 + L22*rx" + label + "^2 - 2*rx" + label + "*ry" + label + "*L12 - 2*rx" + label + "*S23 + 2*ry" + label + "*S13 + T33; : 0.0" );
@@ -157,3 +150,4 @@ Vector3D TLS::corrected_relative_Cartesian_coordinate( const Vector3D & r ) cons
 //}
 
 // ********************************************************************************
+

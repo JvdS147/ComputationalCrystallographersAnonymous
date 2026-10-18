@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ********************************************************************************
 
-// Constructs a scalar matrix
+// Constructs a scalar matrix.
 MatrixFraction3D::MatrixFraction3D( const Fraction & scalar )
 {
     data_[0][0] = scalar       ; data_[0][1] = Fraction( 0 ); data_[0][2] = Fraction( 0 );
@@ -207,7 +207,7 @@ void MatrixFraction3D::convert_to_row_echelon_form( MatrixFraction3D & T )
     T = MatrixFraction3D();
     size_t iRow( 0 );
     size_t iCol( 0 );
-    while ( ( iRow < 2 ) && ( iCol < 3 ) )
+    while ( ( iRow < 3 ) && ( iCol < 3 ) )
     {
         // Find the pivot in column iCol.
         size_t iMax( iRow );
@@ -225,10 +225,14 @@ void MatrixFraction3D::convert_to_row_echelon_form( MatrixFraction3D & T )
             {
                 Fraction factor = -1 * ( data_[i][iCol] / data_[iRow][iCol] );
                 data_[i][iCol] = Fraction::zero();
-                for ( size_t j( iCol + 1 ); j != 3; ++j )
+                T.set_value( i, iCol, T.value( i, iCol ) + factor * T.value( iRow, iCol ) );
+                for ( size_t j( 0 ); j != 3; ++j )
                 {
-                    data_[i][j] += factor * data_[iRow][j];
-                    T.set_value( i, j, T.value( i, j ) + factor * value( iRow, j ) );
+                    if ( j != iCol )
+                    {
+                        data_[i][j] += factor * data_[iRow][j];
+                        T.set_value( i, j, T.value( i, j ) + factor * T.value( iRow, j ) );
+                    }
                 }
             }
             ++iRow;
@@ -398,5 +402,6 @@ MatrixFraction3D transpose( const MatrixFraction3D & matrix3d )
     result.transpose();
     return result;
 }
+
 // ********************************************************************************
 

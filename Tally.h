@@ -28,11 +28,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
-//#include <string>
-//#include <iosfwd>
-
-#include <map>
 #include <iostream>
+#include <map>
+#include <vector>
 
 /*
  * Counts number of items.
@@ -48,6 +46,8 @@ public:
 
     void add( const T & t, const size_t counts = 1 )
     {
+        if ( counts == 0 )
+            return;
         if ( contains( t ) )
             counts_[ t ] += counts;
         else
@@ -56,7 +56,7 @@ public:
 
     size_t size() const { return counts_.size(); }
 
-    bool contains( const T & t )
+    bool contains( const T & t ) const
     {
         return ( counts_.find( t ) != counts_.end() );
     }
@@ -64,21 +64,19 @@ public:
     std::vector< T > values() const
     {
         std::vector< T > result;
-        for ( typename std::map< T, size_t >::const_interator it( counts_.begin() ); it != counts_.end(); ++it )
+        for ( typename std::map< T, size_t >::const_iterator it( counts_.begin() ); it != counts_.end(); ++it )
         {
             result.push_back( it->first );
         }
         return result;
     }
 
-//    T value( const size_t i ) const
-//    {
-//        
-//    }
-
     size_t counts( const T & t ) const
     {
-        return contains( t ) ? counts_[ t ] : 0;
+        typename std::map< T, size_t >::const_iterator it = counts_.find( t );
+        if ( it == counts_.end() )
+            return 0;
+        return it->second;
     }
 
     void show() const
@@ -88,33 +86,6 @@ public:
             std::cout << it->first << " " << it->second << std::endl;
         }
     }
-
-//    Fraction operator+( const Fraction & rhs ) const { return Fraction(*this) += rhs; }
-//    Fraction operator-( const Fraction & rhs ) const { return Fraction(*this) -= rhs; }
-//    Fraction operator*( const Fraction & rhs ) const { return Fraction(*this) *= rhs; }
-//    Fraction operator/( const Fraction & rhs ) const { return Fraction(*this) /= rhs; }
-
-//    Fraction operator+() const { return Fraction( *this ); }
-
-//    Fraction & operator+=( const Fraction & rhs );
-//    Fraction & operator-=( const Fraction & rhs );
-//    Fraction & operator*=( const Fraction & rhs );
-//    Fraction & operator/=( const Fraction & rhs );
-
-//    Fraction & operator++();    // Prefix
-//    Fraction   operator++(int); // Postfix
-//    Fraction & operator--();    // Prefix
-//    Fraction   operator--(int); // Postfix
-
-//    bool operator==( const Fraction & rhs ) const;
-//    bool operator!=( const Fraction & rhs ) const { return ! ( *this == rhs ); }
-//    bool operator< ( const Fraction & rhs ) const;
-//    bool operator> ( const Fraction & rhs ) const { return ( rhs < *this ); }
-//    bool operator>=( const Fraction & rhs ) const { return ! ( *this < rhs ); }
-//    bool operator<=( const Fraction & rhs ) const { return ! ( rhs < *this ); }
-
-    // Returns the Fraction in string form, e.g. "0", "3", "1/2", "2 + 2/3", "-9 + -1/4"
-//    std::string to_string() const;
 
 private:
 

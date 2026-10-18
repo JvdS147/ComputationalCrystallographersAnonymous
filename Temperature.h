@@ -40,12 +40,12 @@ public:
 
     enum TemperatureUnit { KELVIN, CELSIUS };
 
-    // Default constructor: 0.0 GPa
+    // Default constructor: 0.0 K.
     Temperature(): temperature_(0.0) {}
 
     Temperature( const double value, const TemperatureUnit temperature_unit );
 
-    // Named constructors
+    // Named constructors.
     static Temperature from_Kelvin( const double value ) { return Temperature( value ); }
     static Temperature from_Celsius( const double value ) { return Temperature( value + 273.15 ); }
 
@@ -88,7 +88,7 @@ public:
         return *this;
     }
 
-    // Of course, operator== for floating point values is nonsense
+    // Of course, operator== for floating point values is nonsense.
     bool operator==( const Temperature rhs ) const { return ( this->temperature_ == rhs.temperature_ ); }
     bool operator!=( const Temperature rhs ) const { return ! ( *this == rhs ); }
     bool operator< ( const Temperature rhs ) const { return ( this->temperature_ < rhs.temperature_ ); }
@@ -99,9 +99,9 @@ public:
     friend Temperature absolute( const Temperature temperature );
 
 private:
-    double temperature_; // The temperature, stored in GigaPascal
+    double temperature_; // The temperature, stored in Kelvin.
 
-    // Private constructor for named constructors
+    // Private constructor for named constructors.
     explicit Temperature( const double value ) : temperature_(value) {}
 
 };

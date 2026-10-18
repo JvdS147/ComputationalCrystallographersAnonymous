@@ -35,7 +35,7 @@ Vector3D average( const std::vector< Vector3D > & vectors )
     Vector3D result;
     for ( size_t i(0); i != vectors.size(); ++i )
         result += vectors[i];
-    result /= static_cast<double>(vectors.size());
+    result /= static_cast<double>( vectors.size() );
     return result;
 }
 

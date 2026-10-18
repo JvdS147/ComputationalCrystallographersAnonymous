@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_methyl_group( const Vector3D & atom_1, const Vector3D & atom_2, const Angle angle )
 {
     // The following generates an orthonormal basis based on one direction.
@@ -61,7 +61,7 @@ std::vector< Vector3D > add_methyl_group( const Vector3D & atom_1, const Vector3
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_methyl_group( const Vector3D & atom_1, const Vector3D & atom_2, const Vector3D & atom_3 )
 {
     Vector3D difference_vector_temp = atom_1 - atom_2;
@@ -82,7 +82,7 @@ std::vector< Vector3D > add_methyl_group( const Vector3D & atom_1, const Vector3
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_hydrogen_atoms( const Vector3D & atom_1, const Vector3D & atom_2, const size_t nhydrogens, const Angle angle )
 {
     // The following generates an orthonormal basis based on one direction.
@@ -106,7 +106,7 @@ std::vector< Vector3D > add_hydrogen_atoms( const Vector3D & atom_1, const Vecto
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_2_hydrogen_atoms_to_sp3_nitrogen( const Vector3D & atom_N, const Vector3D & atom_2, const Vector3D & atom_H )
 {
     Vector3D difference_vector_temp = atom_N - atom_2;
@@ -131,10 +131,10 @@ std::vector< Vector3D > add_2_hydrogen_atoms_to_sp3_nitrogen( const Vector3D & a
 
 // ********************************************************************************
 
-// Add two hydrogen atoms to an sp2 nitrogen atom
-// Returns the coordinates of the two hydrogen atoms
+// Add two hydrogen atoms to an sp2 nitrogen atom.
+// Returns the coordinates of the two hydrogen atoms.
 // atom_1 and atom_2 are required to define the plane in which the two atoms should lie.
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_2_hydrogen_atoms_to_sp2_nitrogen( const Vector3D & atom_N, const Vector3D & atom_bound_to_N, const Vector3D & atom_1, const Vector3D & atom_2 )
 {
     double target_bond_length = 1.015;
@@ -159,7 +159,7 @@ std::vector< Vector3D > add_2_hydrogen_atoms_to_sp2_nitrogen( const Vector3D & a
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 Vector3D add_hydrogen_atom_to_sp2_atom( const Vector3D & central_atom, const Element element_central_atom, const Vector3D & neighbour_1, const Vector3D & neighbour_2 )
 {
     Vector3D difference_vector_1 = neighbour_1 - central_atom;
@@ -213,7 +213,7 @@ Vector3D add_hydrogen_atom_to_sp3_atom( const Vector3D & central_atom, const Ele
 
 // ********************************************************************************
 
-// Everything in Cartesian coordinates
+// Everything in Cartesian coordinates.
 std::vector< Vector3D > add_2_hydrogen_atoms_to_sp3_atom( const Vector3D & central_atom, const Element element_central_atom, const Vector3D & neighbour_1, const Vector3D & neighbour_2 )
 {
     Vector3D v1 = neighbour_1 - central_atom;
@@ -395,16 +395,8 @@ void normalise_Cu_Cl_bonds( CrystalStructure & crystal_structure )
 void normalise_benzene_ring( CollectionOfPoints & points )
 {
     if ( points.size() != 6 )
-        throw std::runtime_error( "normalise_benzene_ring() : number of points != 6." );
-    Plane plane( points.points_wrt_com() );
-    for ( size_t i( 0 ); i != points.size(); ++i )
-    {
-        Vector2D vector2d = projection( plane, points.point_wrt_com( i ) );
-        
-    }
-    
-    
-  
+        throw std::runtime_error( "normalise_benzene_ring(): number of points != 6." );
+    throw std::runtime_error( "normalise_benzene_ring(): not yet implemented." );
 }
 
 // ********************************************************************************

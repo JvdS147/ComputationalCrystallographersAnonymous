@@ -34,7 +34,7 @@ bool are_bonded( const Atom & lhs, const Atom & rhs )
         return false;
     if ( ( lhs.element() == Element( "K" ) ) || ( rhs.element() == Element( "K" ) ) )
         return false;
-    double distance2 = ( rhs.position() - lhs.position() ).norm2(); // We omit the expensive sqrt()
+    double distance2 = ( rhs.position() - lhs.position() ).norm2(); // We omit the expensive sqrt().
     if ( lhs.element().is_H_or_D() || rhs.element().is_H_or_D() )
         return distance2 < 1.5;
     return distance2 < 2.0;

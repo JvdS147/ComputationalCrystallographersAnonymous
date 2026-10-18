@@ -213,7 +213,9 @@ std::set< Element > CrystalStructure::elements() const
 
 void CrystalStructure::list_all_bonds( std::vector< std::string > & labels_1, std::vector< std::string > & labels_2, std::vector< double > & bonds ) const
 {
-    
+    labels_1.clear();
+    labels_2.clear();
+    bonds.clear();
     for ( size_t i( 0 ); i != connectivity_table_.size(); ++i )
     {
         for ( size_t j( i + 1 ); j != connectivity_table_.size(); ++j )
@@ -222,10 +224,7 @@ void CrystalStructure::list_all_bonds( std::vector< std::string > & labels_1, st
             {
                 labels_1.push_back( atom( i ).label() );
                 labels_2.push_back( atom( j ).label() );
-                double distance;
-                Vector3D difference_vector; // @@ This is a bit wasteful...
-                crystal_lattice_.shortest_distance( atom( i ).position(), atom( j ).position(), distance, difference_vector );
-                bonds.push_back( distance );
+                bonds.push_back( crystal_lattice_.shortest_distance( atom( i ).position(), atom( j ).position() ) );
             }
         }
     }
@@ -235,7 +234,38 @@ void CrystalStructure::list_all_bonds( std::vector< std::string > & labels_1, st
 
 void CrystalStructure::list_all_angles( std::vector< std::string > & labels_1, std::vector< std::string > & labels_2, std::vector< std::string > & labels_3, std::vector< double > & angles ) const
 {
-    
+    labels_1.clear();
+    labels_2.clear();
+    labels_3.clear();
+    angles.clear();
+    // Enumerate each bonded neighbour pair around every central atom.
+    // shortest_distance() returns the displacement from the first position
+    // to the second, including the shortest periodic image.
+    for ( size_t central( 0 ); central != natoms(); ++central )
+    {
+        for ( size_t i( 0 ); i != natoms(); ++i )
+        {
+            if ( ( i == central ) || ( connectivity_table_.value( central, i ) == 0 ) )
+                continue;
+            double distance_i;
+            Vector3D displacement_i;
+            crystal_lattice_.shortest_distance( atom( central ).position(), atom( i ).position(), distance_i, displacement_i );
+            for ( size_t k( i + 1 ); k != natoms(); ++k )
+            {
+                if ( ( k == central ) || ( connectivity_table_.value( central, k ) == 0 ) )
+                    continue;
+                double distance_k;
+                Vector3D displacement_k;
+                crystal_lattice_.shortest_distance( atom( central ).position(), atom( k ).position(), distance_k, displacement_k );
+                const Vector3D orthogonal_i = crystal_lattice_.fractional_to_orthogonal( displacement_i );
+                const Vector3D orthogonal_k = crystal_lattice_.fractional_to_orthogonal( displacement_k );
+                labels_1.push_back( atom( i ).label() );
+                labels_2.push_back( atom( central ).label() );
+                labels_3.push_back( atom( k ).label() );
+                angles.push_back( angle( orthogonal_i, orthogonal_k ).value_in_degrees() );
+            }
+        }
+    }
 }
 
 // ********************************************************************************
@@ -930,6 +960,8 @@ size_t CrystalStructure::nearest_atom( const size_t iAtom ) const
 {
     if ( iAtom >= atoms_.size() )
         throw std::runtime_error( "CrystalStructure::nearest_atom(): iAtom > natoms." );
+    if ( atoms_.size() == 1 )
+        throw std::runtime_error( "CrystalStructure::nearest_atom(): at least two atoms are required." );
     double overall_shortest_distance2( 9999.0 * 9999.0 );
     size_t best_match;
     Vector3D lhs = atoms_[iAtom].position();
@@ -1419,8 +1451,8 @@ double RMSCD_with_matching( const CrystalStructure & lhs, const CrystalStructure
 
 // ********************************************************************************
 
-// Hydrogen / Deuterium is ignored
-// To go from rhs to lhs, so rhs is changed and lhs is the target
+// Hydrogen / Deuterium is ignored.
+// To go from rhs to lhs, so rhs is changed and lhs is the target.
 SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructure & rhs, const size_t shift_steps, std::vector< int > & integer_shifts, const bool add_inversion, const bool correct_floating_axes )
 {
     // Some simple checks:
@@ -1448,7 +1480,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
         Matrix3D sum( 0.0 );
         for ( size_t k( 0 ); k != space_group.nsymmetry_operators(); ++k )
             sum += space_group.symmetry_operator( k ).rotation();
-        Vector3D com_lhs = lhs.centre_of_mass( false ); // Fractional coordinates
+        Vector3D com_lhs = lhs.centre_of_mass( false ); // Fractional coordinates.
         Vector3D com_rhs = rhs.centre_of_mass( false );
         for ( size_t i( 0 ); i != 3; ++i )
         {
@@ -1488,8 +1520,8 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
             continue;
         double smallest_distance( 10000.0 );
         Vector3D best_match;
-        size_t best_symmetry_operator( 0 ); // Stupid initialisation to silence compiler warnings
-        size_t best_shift( 0 ); // Stupid initialisation to silence compiler warnings
+        size_t best_symmetry_operator( 0 ); // Stupid initialisation to silence compiler warnings.
+        size_t best_shift( 0 ); // Stupid initialisation to silence compiler warnings.
         size_t matching_index = natoms + 1;
         // Loop over atoms.
         for ( size_t j( 0 ); j != natoms; ++j )
@@ -1532,7 +1564,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
         ++symmetry_operators_frequencies[best_symmetry_operator];
         ++shifts_frequencies[best_shift];
     }
-    // Check if there is one and only one symmetry operator that has the greatest frequency
+    // Check if there is one and only one symmetry operator that has the greatest frequency.
     size_t most_common_space_group_index = symmetry_operators_frequencies.size();
     size_t most_common_space_group_frequency = 0;
     for ( size_t i( 0 ); i != symmetry_operators_frequencies.size(); ++i )
@@ -1543,7 +1575,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
             most_common_space_group_index = i;
         }
     }
-    // Check if any other symmetry operators are ever found
+    // Check if any other symmetry operators are ever found.
     for ( size_t i( 0 ); i != symmetry_operators_frequencies.size(); ++i )
     {
         if ( i == most_common_space_group_index )
@@ -1562,7 +1594,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
             most_common_shift_index = i;
         }
     }
-    // Check if any other shifts are ever found
+    // Check if any other shifts are ever found.
     for ( size_t i( 0 ); i != shifts_frequencies.size(); ++i )
     {
         if ( i == most_common_shift_index )
@@ -1575,7 +1607,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
     std::cout << "The most common shift, with " << most_common_shift_frequency << " occurrences, is:" << std::endl;
     shifts[ most_common_shift_index ].show();
     SymmetryOperator result( space_group.symmetry_operator( most_common_space_group_index ).rotation(), space_group.symmetry_operator( most_common_space_group_index ).rotation() * shifts[ most_common_shift_index ] + space_group.symmetry_operator( most_common_space_group_index ).translation() );
-    // Apply found transformation to rhs
+    // Apply found transformation to rhs.
     Vector3D integer_shifts_2 = lhs.centre_of_mass( false ) - ( result * rhs.centre_of_mass( false ) ); // Fractional coordinates. lhs is the target.
     integer_shifts.clear();
     integer_shifts.push_back( round_to_int( integer_shifts_2.x() ) );
@@ -1594,7 +1626,7 @@ SymmetryOperator find_match( const CrystalStructure & lhs, const CrystalStructur
 
 void CrystalStructure::match( const CrystalStructure & rhs, const size_t shift_steps, const bool allow_inversion, const bool correct_floating_axes )
 {
-    // Hydrogen / Deuterium is ignored
+    // Hydrogen / Deuterium is ignored.
     // Some simple checks:
     size_t natoms = rhs.natoms();
     if ( natoms != this->natoms() )
@@ -1618,7 +1650,7 @@ void CrystalStructure::match( const CrystalStructure & rhs, const size_t shift_s
         Matrix3D sum( 0.0 );
         for ( size_t k( 0 ); k != space_group.nsymmetry_operators(); ++k )
             sum += space_group.symmetry_operator( k ).rotation();
-        Vector3D com_lhs = centre_of_mass( false ); // Fractional coordinates
+        Vector3D com_lhs = centre_of_mass( false ); // Fractional coordinates.
         Vector3D com_rhs = rhs.centre_of_mass( false );
         for ( size_t i( 0 ); i != 3; ++i )
         {
@@ -1657,8 +1689,8 @@ void CrystalStructure::match( const CrystalStructure & rhs, const size_t shift_s
             continue;
         double smallest_distance( 10000.0 );
         Vector3D best_match;
-        size_t best_symmetry_operator( 0 ); // Stupid initialisation to silence compiler warnings
-        size_t best_shift( 0 ); // Stupid initialisation to silence compiler warnings
+        size_t best_symmetry_operator( 0 ); // Stupid initialisation to silence compiler warnings.
+        size_t best_shift( 0 ); // Stupid initialisation to silence compiler warnings.
         size_t matching_index = natoms + 1;
         // Loop over atoms.
         for ( size_t j( 0 ); j != natoms; ++j )
@@ -1700,7 +1732,7 @@ void CrystalStructure::match( const CrystalStructure & rhs, const size_t shift_s
         ++symmetry_operators_frequencies[best_symmetry_operator];
         ++shifts_frequencies[best_shift];
     }
-    // Check if there is one and only one symmetry operator that has the greatest frequency
+    // Check if there is one and only one symmetry operator that has the greatest frequency.
     size_t most_common_space_group_index = symmetry_operators_frequencies.size();
     size_t most_common_space_group_frequency = 0;
     for ( size_t i( 0 ); i != symmetry_operators_frequencies.size(); ++i )
@@ -1772,7 +1804,7 @@ void CrystalStructure::match( const CrystalStructure & rhs, const size_t shift_s
 
 // ********************************************************************************
 
-// Hydrogen / Deuterium is ignored
+// Hydrogen / Deuterium is ignored.
 void map( const CrystalStructure & to_be_changed, const CrystalStructure & target, const size_t shift_steps, Mapping & mapping, SymmetryOperator & symmetry_operator, std::vector< Vector3D > & translations, const bool allow_inversion, const bool correct_floating_axes )
 {
     bool debug_output( false );

@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "TOPAS.h"
-
 #include "Angle.h"
 #include "CrystalLattice.h"
 #include "TextFileReader_2.h"

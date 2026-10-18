@@ -31,8 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // A major reason for the existence of this file is that it collects all functions that combine
 // Centring, MillerIndices, SymmetryOperator and SpaceGroup, so that those classes do not need to know about each other.
 
-//#include "BasicMathsFunctions.h"
-
 class AnisotropicDisplacementParameters;
 class Centring;
 //class CollectionOfPoints;

@@ -39,7 +39,7 @@ class RandomNumberGenerator_integer
 {
 public:
     
-    // idum should be positive and not zero
+    // idum should be positive and not zero.
     RandomNumberGenerator_integer( const int idum = 1539 );
 
     int next_number( const int start, const int end );
@@ -68,7 +68,7 @@ class RandomNumberGenerator_double
 {
 public:
     
-    // idum should be positive and not zero
+    // idum should be positive and not zero.
     explicit RandomNumberGenerator_double( const int idum = 7381 );
 
     double next_number();

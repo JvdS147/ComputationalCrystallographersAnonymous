@@ -55,6 +55,7 @@ void run_tests()
         test_ModelBuilding( test_suite );
         test_OrientationalOrderParameters( test_suite );
         test_PowderPattern( test_suite );
+        test_Pressure( test_suite );
         test_quaternion( test_suite );
         test_ReadCell( test_suite );
         test_RingBuffer( test_suite );
@@ -65,17 +66,39 @@ void run_tests()
         test_StringFunctions( test_suite );
         test_StringConversions( test_suite );
         test_SudokuSolver( test_suite );
+        test_Tally( test_suite );
         test_TextFileReader_2( test_suite );
         test_TLS_ADPs( test_suite );
         test_utilities( test_suite );
         test_3D_calculations( test_suite );
+        test_Centring( test_suite );
+        test_GenerateCombinations( test_suite );
+        test_MoleculeInCrystal( test_suite );
+        test_RandomQuaternionGenerator( test_suite );
+        test_ReadXSD( test_suite );
+        test_RealisticXRPDSimulator( test_suite );
+        test_RealisticXRPDSimulatorSettings( test_suite );
+        test_SetOfNumbers( test_suite );
+        test_TLS( test_suite );
+        test_TransSquareDependency( test_suite );
+        test_VoidsFinder( test_suite );
     }
     catch ( std::exception& e )
     {
         std::cout << "An exception was thrown" << std::endl;
         std::cout << e.what() << std::endl;
     }
+    catch ( ... )
+    {
+        test_suite.log_error( "Unhandled non-standard exception" );
+    }
     test_suite.report();
-    std::cout << "Test suite done" << std::endl;
+    if ( test_suite.error_count() == 0 )
+        std::cout << "Test suite done." << std::endl;
+    else if ( test_suite.error_count() == 1 )
+        std::cout << "Test suite done: " << test_suite.error_count() << " failure." << std::endl;
+    else if ( test_suite.error_count() > 1 )
+        std::cout << "Test suite done: " << test_suite.error_count() << " failures." << std::endl;
+
 }
 
