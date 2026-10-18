@@ -980,8 +980,6 @@ void CrystalStructure::collapse_supercell( const size_t u,
                                            std::vector< std::vector< Vector3D > > & positions )
 {
     positions.clear();
-    // The following loop is necessary but screws up the current crystal structure;
-    // this method should essentially be const...
     // Correct for drift.
     actual_centre = Vector3D();
     for ( size_t i( 0 ); i != atoms_.size(); ++i )
@@ -1009,21 +1007,39 @@ void CrystalStructure::collapse_supercell( const size_t u,
             atoms_[ i ].set_position( position );
         }
     }
+/*
+    Sometimes you can make angles of the simulation cell closer to 90 degrees by first replicating the unit cell in one direction, then
+    making one unit-cell angle closer to 90 and then replicating the unit cell in the remaining two directions. An example is Form A of Compound XXX
+    of the 2025 Crystal structure Prediction Blind Test. Monoclinic, a = 24 A, c = 22 A, beta = 115. The unit cell cannot be made more orthogonal.
+    But after triplicating the unit cell in the a-direction ( a' = 3a ), one c can be added to the new a ( a'' = a' + c ) to make beta 97, followed by replicating the unit cell
+    in the b- and c-direction ( b' = 8b, c' = 3c ). The following code would handle this correctly with u = 3, v = 8 and w = 3.
+    Matrix3D m1(     u,   0.0,   0.0,
+                   0.0,   1.0,   0.0,
+                   0.0,   0.0,   1.0 );
+    Matrix3D m2(   1.0,   0.0,   1.0,
+                   0.0,   1.0,   0.0,
+                   0.0,   0.0,   1.0 );
+    Matrix3D m3(   1.0,   0.0,   0.0,
+                   0.0,     v,   0.0,
+                   0.0,   0.0,     w );
+    Matrix3D trans = m3 * m2 * m1;
+*/
+    Matrix3D trans( u , 0.0, 0.0,
+                   0.0,  v , 0.0,
+                   0.0, 0.0,  w  );
+    Matrix3D atom_trans = crystal_lattice_.fractional_to_orthogonal_matrix();
+    trans.invert();
+    Vector3D new_a_vector = trans.value( 0, 0 ) * crystal_lattice_.a_vector() + trans.value( 0, 1 ) * crystal_lattice_.b_vector() + trans.value( 0, 2 ) * crystal_lattice_.c_vector();
+    Vector3D new_b_vector = trans.value( 1, 0 ) * crystal_lattice_.a_vector() + trans.value( 1, 1 ) * crystal_lattice_.b_vector() + trans.value( 1, 2 ) * crystal_lattice_.c_vector();
+    Vector3D new_c_vector = trans.value( 2, 0 ) * crystal_lattice_.a_vector() + trans.value( 2, 1 ) * crystal_lattice_.b_vector() + trans.value( 2, 2 ) * crystal_lattice_.c_vector();
+    Matrix3D orthogonal_to_fractional_matrix = Matrix3D( new_a_vector.x(), new_b_vector.x(), new_c_vector.x(),
+                                                         new_a_vector.y(), new_b_vector.y(), new_c_vector.y(),
+                                                         new_a_vector.z(), new_b_vector.z(), new_c_vector.z() );
+    orthogonal_to_fractional_matrix.invert();
+    atom_trans = orthogonal_to_fractional_matrix * atom_trans;
     for ( size_t i( 0 ); i != atoms_.size(); ++i )
-    {
-        Vector3D position = atoms_[ i ].position();
-        position.set_x( u * position.x() );
-        position.set_y( v * position.y() );
-        position.set_z( w * position.z() );
-        atoms_[ i ].set_position( position );
-    }
-    CrystalLattice crystal_lattice( crystal_lattice_.a() / u,
-                                    crystal_lattice_.b() / v,
-                                    crystal_lattice_.c() / w,
-                                    crystal_lattice_.alpha(),
-                                    crystal_lattice_.beta(),
-                                    crystal_lattice_.gamma() );
-    crystal_lattice_ = crystal_lattice;
+        atoms_[ i ].set_position( atom_trans * atoms_[ i ].position() );
+    crystal_lattice_.transform( trans );
     size_t multiplicity = u * v * w * space_group_.nsymmetry_operators();
     size_t natoms_per_asymmetric_unit = atoms_.size() / multiplicity;
     positions.reserve( natoms_per_asymmetric_unit );
