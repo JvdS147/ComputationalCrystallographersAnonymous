@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Currently the algorithm to detect floating axes does not work for the diagonal in cubic space groups, I do not know about trigonal and rhombohedral.
 // So in practice the algorithm to detect floating axes is only guaranteed to work for triclinic, monoclinic and orthorhombic.
 // Could be made more general.
+
 enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR, FLOATING_AXES };
 
 #endif // DRIFTCORRECTION_H

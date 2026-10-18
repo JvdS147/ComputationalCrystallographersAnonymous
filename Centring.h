@@ -89,7 +89,7 @@ private:
     CentringType centring_type_;
 };
 
-#endif // CENTRING_H
-
 std::string centring_type_to_string( const Centring::CentringType centring_type );
+
+#endif // CENTRING_H
 

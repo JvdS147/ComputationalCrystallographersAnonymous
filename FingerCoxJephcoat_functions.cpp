@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "FingerCoxJephcoat_functions.h"
-
 #include "Angle.h"
 #include "MathsFunctions.h"
 

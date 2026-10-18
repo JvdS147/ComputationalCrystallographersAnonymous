@@ -237,7 +237,6 @@ PowderPattern read_cif( const FileName & file_name )
     {
         if ( number_of_points != counts.size() )
             throw std::runtime_error( "PowderPattern::read_cif(): _pd_meas_number_of_points inconsistent with the actual number of points." );
-        Angle two_theta_step_should_be = ( two_theta_end - two_theta_start ) / ( number_of_points - 1 );
     }
     if ( counts.size() < 2 )
         throw std::runtime_error( "PowderPattern::read_cif(): there are fewer than two points in the pattern." );

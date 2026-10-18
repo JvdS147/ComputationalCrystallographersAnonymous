@@ -28,11 +28,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Temperature.h"
 
 #include <iostream>
+#include <stdexcept>
 
 // ********************************************************************************
 
 Temperature::Temperature( const double value, const TemperatureUnit temperature_unit )
 {
+    switch ( temperature_unit )
+    {
+        case KELVIN:  temperature_ = value; break;
+        case CELSIUS: temperature_ = value + 273.15; break;
+    }
 }
 
 // ********************************************************************************

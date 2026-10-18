@@ -60,10 +60,23 @@ void test_Stack( TestSuite & test_suite );
 void test_StringConversions( TestSuite & test_suite );
 void test_StringFunctions( TestSuite & test_suite );
 void test_SudokuSolver( TestSuite & test_suite );
+void test_Tally( TestSuite & test_suite );
 void test_TextFileReader_2( TestSuite & test_suite );
 void test_TLS_ADPs( TestSuite & test_suite );
 void test_utilities( TestSuite & test_suite );
 void test_3D_calculations( TestSuite & test_suite );
+void test_Centring( TestSuite & test_suite );
+void test_GenerateCombinations( TestSuite & test_suite );
+void test_MoleculeInCrystal( TestSuite & test_suite );
+void test_RandomQuaternionGenerator( TestSuite & test_suite );
+void test_ReadXSD( TestSuite & test_suite );
+void test_RealisticXRPDSimulator( TestSuite & test_suite );
+void test_RealisticXRPDSimulatorSettings( TestSuite & test_suite );
+void test_SetOfNumbers( TestSuite & test_suite );
+void test_TLS( TestSuite & test_suite );
+void test_TransSquareDependency( TestSuite & test_suite );
+void test_VoidsFinder( TestSuite & test_suite );
+void test_Pressure( TestSuite & test_suite );
 
 void run_tests();
 

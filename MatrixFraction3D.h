@@ -36,7 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
   A 3x3 matrix.
 */
-
 class MatrixFraction3D
 {
 public:
@@ -112,7 +111,6 @@ MatrixFraction3D operator/( const MatrixFraction3D & lhs, Fraction rhs );
 
 MatrixFraction3D inverse( const MatrixFraction3D & matrix3d );
 MatrixFraction3D transpose( const MatrixFraction3D & matrix3d );
-
 
 #endif // MATRIXFRACTION3D_H
 

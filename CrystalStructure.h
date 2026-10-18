@@ -53,8 +53,6 @@ struct SpecialPositionsReport
     size_t nmolecules_;
 };
 
-//enum DriftCorrection { NONE, USE_FIRST_FRAME, USE_VECTOR };
-
 /*
   A crystal structure
 

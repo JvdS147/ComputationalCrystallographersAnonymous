@@ -326,37 +326,8 @@ double CrystalLattice::shortest_distance2( const Vector3D & lhs, const Vector3D 
 // Returns the shortest distance and the shortest difference vector (in fractional coordinates).
 void CrystalLattice::shortest_distance( const Vector3D & lhs, const Vector3D & rhs, double & output_distance, Vector3D & output_difference_vector ) const
 {
-    Vector3D difference_vector = adjust_for_translations( rhs - lhs ); // In fractional coordinates
-    // Now we must find the shortest distance.
-    double shortest_distance = fractional_to_orthogonal( difference_vector ).norm2();
-    // "shortest_distance" may now be something like 0.95, which clearly should have been 0.05. Likewise,
-    // with very acute unit-cell angles, it may be necessary to add or subtract +/- 1 (fractional coordinates).
-    Vector3D original_difference_vector( difference_vector );
-    bool shortest_distance_changed( false );
-    do
-    {
-        shortest_distance_changed = false;
-        for ( int i( -1 ); i != 2; ++i )
-        {
-            for ( int j( -1 ); j != 2; ++j )
-            {
-                for ( int k( -1 ); k != 2; ++k )
-                {
-                    Vector3D new_difference_vector = original_difference_vector + Vector3D( i, j, k );
-                    double distance = fractional_to_orthogonal( new_difference_vector ).norm2();
-                    if ( distance < shortest_distance )
-                    {
-                        difference_vector = new_difference_vector;
-                        shortest_distance = distance;
-                        shortest_distance_changed = true;
-                    }
-                }
-            }
-        }
-    }
-    while ( shortest_distance_changed );
-    output_distance = sqrt( shortest_distance );
-    output_difference_vector = difference_vector;
+    shortest_distance2( lhs, rhs, output_distance, output_difference_vector );
+    output_distance = sqrt( output_distance );
 }
 
 // ********************************************************************************

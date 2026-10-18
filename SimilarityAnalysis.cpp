@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "SimilarityAnalysis.h"
-
 #include "CorrelationMatrix.h"
 #include "CrystalStructure.h"
 #include "FileList.h"

@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream> // For debugging
 
 // ********************************************************************************
+
 NormalisedVector3D::NormalisedVector3D()
 {
     data_[0] = 1.0;
@@ -107,5 +108,6 @@ NormalisedVector3D orthogonalise( const NormalisedVector3D & n, const Normalised
     double t = n*r;
     return NormalisedVector3D( r.x() - t*n.x(), r.y() - t*n.y(), r.z() - t*n.z() );
 }
+
 // ********************************************************************************
 

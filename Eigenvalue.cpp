@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
 #include "Eigenvalue.h"
-
 #include "3DCalculations.h"
 #include "MathsFunctions.h"
 #include "Matrix3D.h"

@@ -218,7 +218,7 @@ void Matrix3D::convert_to_row_echelon_form( Matrix3D & T )
     T = Matrix3D();
     size_t iRow( 0 );
     size_t iCol( 0 );
-    while ( ( iRow < 2 ) && ( iCol < 3 ) )
+    while ( ( iRow < 3 ) && ( iCol < 3 ) )
     {
         // Find the pivot in column iCol.
         size_t iMax( iRow );
@@ -236,10 +236,14 @@ void Matrix3D::convert_to_row_echelon_form( Matrix3D & T )
             {
                 double factor = -1.0 * ( data_[i][iCol] / data_[iRow][iCol] );
                 data_[i][iCol] = 0.0;
-                for ( size_t j( iCol + 1 ); j != 3; ++j )
+                T.set_value( i, iCol, T.value( i, iCol ) + factor * T.value( iRow, iCol ) );
+                for ( size_t j( 0 ); j != 3; ++j )
                 {
-                    data_[i][j] += factor * data_[iRow][j];
-                    T.set_value( i, j, T.value( i, j ) + factor * value( iRow, j ) );
+                    if ( j != iCol )
+                    {
+                        data_[i][j] += factor * data_[iRow][j];
+                        T.set_value( i, j, T.value( i, j ) + factor * T.value( iRow, j ) );
+                    }
                 }
             }
             ++iRow;
@@ -417,5 +421,6 @@ Matrix3D transpose( const Matrix3D & matrix3d )
     result.transpose();
     return result;
 }
+
 // ********************************************************************************
 

@@ -33,3 +33,4 @@ class FileName;
 void copy_text_file( const FileName & input_file, const FileName & output_file );
 
 #endif // COPYTEXTFILE_H
+

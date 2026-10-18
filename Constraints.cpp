@@ -99,8 +99,6 @@ std::string write_constraints( const CrystalStructure & crystal_structure, const
         return result;
     } 
     // Third special case: three-fold rotation axis along the diagonal.
-    // @@ There are four body diagonals, below we only cover one.
-    // @@ Also, we assume that the body diaganal passes through the origin.
     std::vector< Matrix3D > symmetry_operators;
     symmetry_operators.push_back( Matrix3D() );
     symmetry_operators.push_back( Matrix3D( 0.0, 0.0, 1.0,
@@ -112,8 +110,9 @@ std::string write_constraints( const CrystalStructure & crystal_structure, const
     PointGroup three_fold_on_diagonal( symmetry_operators );
     if ( same_symmetry_operators( point_group, three_fold_on_diagonal ) )
     {
-        "prm coord_dash " + x;
-        result = "site C1 x = coord_dash; y = coord_dash; z = coord_dash; occ C 1 beq = bnonh;";
+        std::cout << "Special position along body diagonal requires two lines becuae it requires the definition of a parameter." << std::endl;
+        std::cout << "prm fx_coord x" << std::endl;
+        result = "site C1 x = fx_coord; y = fx_coord; z = fx_coord; occ C 1 beq = bnonh;";
         return result;
     }
     Matrix3D matrix = point_group.special_position_operator() - Matrix3D();

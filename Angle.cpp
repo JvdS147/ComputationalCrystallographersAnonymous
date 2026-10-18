@@ -84,5 +84,6 @@ bool triquality( const Angle x1, const Angle x2, const Angle x3, const Angle tol
        std::cout << "triquality( Angle ): Warning: A=B and B=C but A!=C; returning false." << std::endl;
     return false;
 }
+
 // ********************************************************************************
 

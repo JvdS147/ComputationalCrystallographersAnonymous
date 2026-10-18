@@ -40,12 +40,12 @@ public:
 
     enum PressureUnit { GPa, MPa, bar, atm };
 
-    // Default constructor: 0.0 GPa
+    // Default constructor: 0.0 GPa.
     Pressure(): pressure_(0.0) {}
 
     Pressure( const double value, const PressureUnit pressure_unit );
 
-    // Named constructors
+    // Named constructors.
     static Pressure from_GPa( const double value ) { return Pressure( value ); }
     static Pressure from_MPa( const double value ) { return Pressure( value / 1000.0 ); }
     static Pressure from_kPa( const double value ) { return Pressure( value / 1000000.0 ); }

@@ -28,7 +28,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************* */
 
-class Matrix3D; // It would be cleaner if Quaternion did not have to know about Matrix3D, but because 
+class Matrix3D; // It would be cleaner if Quaternion did not have to know about Matrix3D, but because
                 // this Quaternion class is not really a general quaternion class but a rotation class,
                 // it makes sense to add the conversion to and from a rotation matrix in here.
 
