@@ -128,6 +128,9 @@ There is no trigonal lattice system, and no trigonal crystal family.
 
     // Expansion coefficient = 1.7 x 10^-4 K^-1 ( https://pubs.rsc.org/en/content/articlelanding/2021/sc/d1sc01076j ).
     // Temperature difference in Kelvin.
+    // See Van der Lee https://pubs.rsc.org/en/content/articlelanding/2021/sc/d1sc01076j ,
+    // Bond https://doi.org/10.1107/S2052520621003309 and
+    // Sun https://doi.org/10.1002/jps.20928 .
     void expand_with_temperature( const double temperature_difference );
 
     // Finds shortest distance, in Angstrom, between two positions given in fractional coordinates.
