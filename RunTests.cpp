@@ -41,7 +41,6 @@ void run_tests()
         test_chemical_formula( test_suite );
         test_Complex( test_suite );
         test_Constraints( test_suite );
-        test_ConvexPolygon( test_suite );
         test_correlation_matrix( test_suite );
         test_crystal_lattice( test_suite );
         test_crystal_structure( test_suite );

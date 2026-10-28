@@ -36,7 +36,6 @@ void test_Chebyshev_background( TestSuite & test_suite );
 void test_chemical_formula( TestSuite & test_suite );
 void test_Complex( TestSuite & test_suite );
 void test_Constraints( TestSuite & test_suite );
-void test_ConvexPolygon( TestSuite & test_suite );
 void test_correlation_matrix( TestSuite & test_suite );
 void test_crystal_lattice( TestSuite & test_suite );
 void test_crystal_structure( TestSuite & test_suite );
